@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/openai-client",
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"description": "OpenAI JavaScript SDK adapter for openai-oauth auth handles.",
 	"type": "module",
 	"sideEffects": false,
@@ -14,7 +14,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",

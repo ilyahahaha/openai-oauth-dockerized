@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/react",
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"description": "React hook and button for OpenAI OAuth sessions.",
 	"type": "module",
 	"sideEffects": false,
@@ -16,7 +16,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",

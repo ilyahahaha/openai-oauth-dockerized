@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/web",
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"description": "Browser credential storage and web utilities for openai-oauth.",
 	"type": "module",
 	"sideEffects": false,
@@ -14,7 +14,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",

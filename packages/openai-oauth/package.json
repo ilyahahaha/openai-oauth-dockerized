@@ -1,6 +1,6 @@
 {
 	"name": "openai-oauth",
-	"version": "1.0.1",
+	"version": "2.0.0",
 	"description": "Free OpenAI API access with your ChatGPT account.",
 	"type": "module",
 	"bin": {
@@ -13,7 +13,9 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsup src/index.ts src/cli.ts --format esm --dts --outDir dist --clean",

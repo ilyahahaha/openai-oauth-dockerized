@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/core",
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"description": "Core auth and in-memory OpenAI-compatible transport for openai-oauth.",
 	"type": "module",
 	"sideEffects": false,
@@ -14,7 +14,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
