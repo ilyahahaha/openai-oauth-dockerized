@@ -1,8 +1,8 @@
 ![](/assets/banner-light.png)
 
-<center>
+<p align="center">
     <a href="https://www.npmjs.com/package/openai-oauth">NPM</a> | <a href="#legal">Legal</a>
-</center>
+</p>
 
 > [!NOTE]
 > ### What's new in v2?
