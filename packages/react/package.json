@@ -1,0 +1,46 @@
+{
+	"name": "@openai-oauth/react",
+	"version": "0.1.0",
+	"description": "React hook and button for OpenAI OAuth sessions.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./next": {
+			"types": "./dist/next.d.ts",
+			"default": "./dist/next.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"prepublishOnly": "bun run build",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"peerDependencies": {
+		"react": ">=18.2.0 || >=19.0.0"
+	},
+	"dependencies": {
+		"@openai-oauth/core": "workspace:*",
+		"@openai-oauth/web": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/react": "^19.0.0",
+		"react": "^19.0.0",
+		"typescript": "latest",
+		"vitest": "latest"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/openai-oauth/issues"
+	},
+	"homepage": "https://github.com/EvanZhouDev/openai-oauth#readme"
+}
