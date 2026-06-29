@@ -1,67 +1,103 @@
-# openai-oauth
+![](/assets/banner-light.png)
 
-[NPM](https://www.npmjs.com/package/openai-oauth) | [Legal](#legal)
+<center>
+    <a href="https://www.npmjs.com/package/openai-oauth">NPM</a> | <a href="#legal">Legal</a>
+</center>
 
-Free OpenAI API access with your ChatGPT account.
+> ### What's new in v2?
+>
+> - **Sign in with ChatGPT**: Let your users sign in with their ChatGPT accounts in React
+> - **Generalized Client Support**: Use with OpenAI Client, AI SDK, or any other OpenAI-Compatible client
+> - **CLI Login**: You can now login via `npx openai-oauth`
+> - **Cleaner Package Architecture**: Separate packages for CLI, credentials, clients, and more
 
-Just run `npx openai-oauth`.
+# Quickstart
 
-## How to Use
+## Dev Proxy
 
-You can currently use `openai-oauth` in two different ways:
+Turn your ChatGPT account into an OpenAI-Compatible API
 
-### `openai-oauth` CLI
-
-This package lets you create a localhost proxy to `chatgpt.com/backend-api/codex/responses` pre-authenticated with your Oauth tokens.
-
-Use directly:
-
-```bash
-npx openai-oauth
+```txt
+$ npx openai-oauth
 
 OpenAI-compatible endpoint ready at http://127.0.0.1:10531/v1
 Use this as your OpenAI base URL. No API key is required.
-Available Models: gpt-5.4, gpt-5.3-codex, ...
+Available Models: gpt-5.5, gpt-5.4, ...
 ```
 
-### `openai-oauth-provider`
+[Learn more](#dev-proxy)
 
-This is a Vercel AI SDK Provider.
+## TypeScript SDK
+
+Access your ChatGPT account directly from TypeScript on your machine
+
+```bash
+npm i @openai-oauth/local @openai-oauth/ai-sdk ai
+```
+
+If you are not signed in to Codex locally, first run `npx openai-oauth login`.
 
 ```ts
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/local";
 import { generateText } from "ai";
-import { createOpenAIOAuth } from "openai-oauth-provider";
 
-const openai = createOpenAIOAuth();
+const openai = createOpenAIOAuth(openaiCredentials());
 
 const result = await generateText({
-	model: openai("gpt-5.4"),
-	prompt: "write an essay about dogs",
+	model: openai("gpt-5.4-mini"),
+	prompt: "Hello!",
 });
-
-console.log(result.text);
 ```
 
-## Configuration
+Works with any OpenAI-compatible client. [Learn more](#typescript-sdk)
 
-The CLI and the provider share the same core OAuth transport settings.
+## React Component
 
-| Config              | CLI                 | Provider       | Default                                                                                                                                                 | Description                                                                                                                        |
-| ------------------- | ------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Host binding        | `--host`            | N/A            | `127.0.0.1`                                                                                                                                             | Host interface the local proxy binds to.                                                                                           |
-| Port                | `--port`            | N/A            | `10531`                                                                                                                                                 | Port the local proxy binds to.                                                                                                     |
-| Model allowlist     | `--models`          | N/A            | Account-specific Codex models discovered from ChatGPT                                                                                                   | Comma-separated list of model ids exposed by `/v1/models`. When omitted, the CLI discovers the models your account has access to. |
-| Codex API version   | `--codex-version`   | `codexVersion` | Local `codex --version`, then `@openai/codex` latest from npm, then `0.111.0`                                                                          | Override the Codex API client version used for model discovery.                                                                    |
-| Upstream base URL   | `--base-url`        | `baseURL`      | `https://chatgpt.com/backend-api/codex`                                                                                                                 | Override the upstream Codex base URL.                                                                                              |
-| OAuth client id     | `--oauth-client-id` | `clientId`     | `app_EMoamEEZ73f0CkXaXp7hrann`                                                                                                                          | Override the OAuth client id used for refresh.                                                                                     |
-| OAuth token URL     | `--oauth-token-url` | `tokenUrl`     | `https://auth.openai.com/oauth/token`                                                                                                                   | Override the OAuth token URL used for refresh.                                                                                     |
-| Auth file path      | `--oauth-file`      | `authFilePath` | `--oauth-file` path if provided, otherwise `$CHATGPT_LOCAL_HOME/auth.json`, `$CODEX_HOME/auth.json`, `~/.chatgpt-local/auth.json`, `~/.codex/auth.json` | Override where the local OAuth auth file is discovered.                                                                            |
-| Ensure fresh tokens | N/A                 | `ensureFresh`  | `true`                                                                                                                                                  | Control whether access tokens are refreshed automatically.                                                                         |
-| Provider name       | N/A                 | `name`         | `openai`                                                                                                                                                | Override the provider name exposed to Vercel AI SDK internals.                                                                     |
+Let your users sign in with their ChatGPT accounts.
 
-## Features
+<img src="/assets/sign-in-with-chatgpt-button.png" alt="Sign in with ChatGPT" width="320" />
 
-What currently works:
+```bash
+npm i @openai-oauth/react @openai-oauth/ai-sdk ai
+```
+
+Quickstart for Next.js:
+
+```ts
+// app/api/openai-oauth/[...openai]/route.ts
+
+export { GET, POST, OPTIONS } from "@openai-oauth/react/next";
+```
+
+```tsx
+"use client";
+
+import { SignInWithChatGPT } from "@openai-oauth/react";
+
+export default function Page() {
+	return <SignInWithChatGPT />;
+}
+```
+
+```ts
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react";
+import { generateText } from "ai";
+
+const openai = createOpenAIOAuth(openaiCredentials());
+
+const result = await generateText({
+	model: openai("gpt-5.4-mini"),
+	prompt: "Hello!",
+});
+```
+
+Works with any web framework and OpenAI-compatible client. [Learn more](#react-component)
+
+# Docs
+
+## What is Supported
 
 - Working Endpoints:
   - `/v1/responses`
@@ -71,30 +107,346 @@ What currently works:
 - Toolcalls
 - Reasoning Traces
 
+See [Known Limitations](#known-limitations) for more information.
+
+## `openai-oauth` CLI
+
+```bash
+npx openai-oauth
+```
+
+This starts an OpenAI-compatible endpoint (by default at `localhost:10531`) that is connected to your ChatGPT account.
+
+If you are not signed in, it will ask you to sign in locally. Your credentials will be stored in `~/.codex` (the same place `codex` CLI uses).
+
+You can always directly sign in (without starting the server):
+
+```bash
+npx openai-oauth login
+```
+
+The CLI also supports a few configuration options that generally do not need to be edited.
+
+<details>
+<summary><code>openai-oauth</code> CLI Flags</summary>
+<br>
+<table>
+  <thead>
+    <tr>
+      <th>Config</th>
+      <th>CLI flag</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Host binding</td>
+      <td><code>--host</code></td>
+      <td><code>127.0.0.1</code></td>
+      <td>Host interface the local proxy binds to.</td>
+    </tr>
+    <tr>
+      <td>Port</td>
+      <td><code>--port</code></td>
+      <td><code>10531</code></td>
+      <td>Port the local proxy binds to.</td>
+    </tr>
+    <tr>
+      <td>Model allowlist</td>
+      <td><code>--models</code></td>
+      <td>Account-specific Codex models discovered from ChatGPT</td>
+      <td>Comma-separated list of model ids exposed by <code>/v1/models</code>. When omitted, the CLI discovers the models your account has access to.</td>
+    </tr>
+    <tr>
+      <td>Codex API version</td>
+      <td><code>--codex-version</code></td>
+      <td>Local <code>codex --version</code>, then latest <code>@openai/codex</code> from npm, then <code>0.111.0</code></td>
+      <td>Override the Codex API client version used for model discovery.</td>
+    </tr>
+    <tr>
+      <td>Upstream base URL</td>
+      <td><code>--base-url</code></td>
+      <td><code>https://chatgpt.com/backend-api/codex</code></td>
+      <td>Override the upstream Codex base URL.</td>
+    </tr>
+    <tr>
+      <td>OAuth client ID</td>
+      <td><code>--oauth-client-id</code></td>
+      <td><code>app_EMoamEEZ73f0CkXaXp7hrann</code></td>
+      <td>Override the OAuth client id used for login and refresh.</td>
+    </tr>
+    <tr>
+      <td>OAuth token URL</td>
+      <td><code>--oauth-token-url</code></td>
+      <td><code>https://auth.openai.com/oauth/token</code></td>
+      <td>Override the OAuth token URL used for login and refresh.</td>
+    </tr>
+    <tr>
+      <td>Auth file path</td>
+      <td><code>--oauth-file</code></td>
+      <td><code>--oauth-file</code> path if provided, otherwise <code>$CHATGPT_LOCAL_HOME/auth.json</code>, <code>$CODEX_HOME/auth.json</code>, <code>~/.chatgpt-local/auth.json</code>, <code>~/.codex/auth.json</code></td>
+      <td>Override where the local OAuth auth file is discovered.</td>
+    </tr>
+    <tr>
+      <td>Open browser</td>
+      <td><code>--open</code> / <code>--no-open</code></td>
+      <td><code>--open</code></td>
+      <td>Open the login URL in a browser during <code>npx openai-oauth login</code>. Use <code>--no-open</code> to print the URL instead.</td>
+    </tr>
+    <tr>
+      <td>Login timeout</td>
+      <td><code>--login-timeout-ms</code></td>
+      <td><code>300000</code></td>
+      <td>How long the login command waits for the OAuth callback, in milliseconds.</td>
+    </tr>
+  </tbody>
+</table>
+</details>
+
+## SDK Overview
+
+The `openai-oauth` SDK allows you to integrate ChatGPT login into your local apps and also enable **Sign in with ChatGPT** for your users.
+
+![](/assets/package-structure.png)
+
+The SDK is primarily built around two concepts:
+
+- **Credential Sources**: A way to get a ChatGPT OAuth session
+  - Such as local authentication, or when a user auths with **Sign in with ChatGPT**
+- **Client Adapters**: Allows you to actually use the Credential Source
+  - Such as with Vercel's AI SDK or with the OpenAI client
+
+In general, the SDK will follow this pattern:
+
+```ts
+import { openaiCredentials } from "@openai-oauth/local";
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { generateText } from "ai";
+
+// Get credentials from local
+const credentials = openaiCredentials();
+
+// Use those credentials to create an AI SDK object
+const openai = createOpenAIOAuth(credentials);
+
+// Use AI SDK to run the request
+const result = await generateText({
+	model: openai("gpt-5.4-mini"),
+	prompt: "Hello!",
+});
+```
+
+## Credential Sources
+
+These allow you to get the OAuth credentials from OpenAI.
+
+### `@openai-oauth/local`
+
+```bash
+npm i @openai-oauth/local
+```
+
+Use local Codex credentials which live on your machine (normally at `~/.codex`).
+
+```ts
+import { openaiCredentials } from "@openai-oauth/local";
+
+const credentials = openaiCredentials();
+```
+
+This should work out-of-the-box if you're already logged in with Codex, but to log in again, you can run `npx openai-oauth login`.
+
+You can also point to a specific auth file:
+
+```ts
+const credentials = openaiCredentials({
+	authFilePath: "/path/to/auth.json",
+});
+```
+
+### `@openai-oauth/react`
+
+```bash
+npm i @openai-oauth/react
+```
+
+Use credentials from the user's browser, with **Sign in with ChatGPT**.
+
+```ts
+import { openaiCredentials } from "@openai-oauth/web";
+
+const credentials = openaiCredentials();
+```
+
+In order to actually establish the credentials in the user's browser, you can use `openai-oauth`'s built-in **Sign in with ChatGPT** SDK, [documented below](#sign-in-with-chatgpt-setup).
+
+For framework neutral usage, see documentation for `@openai-oauth/web` in `packages/web`.
+
+### How are web credentials stored?
+
+Your OpenAI credentials are by default stored on your device in IndexedDB and encrypted at rest with WebCrypto.
+The server relay required does not store credentials.
+
+`openai-oauth` lets you bring your own credential storage solution if this is not good enough. See documentation for `@openai-oauth/web` in `packages/web` for more information.
+
+## Client Adapters
+
+These adapters let you use your `openai-oauth` credentials in any client.
+
+### `@openai-oauth/ai-sdk`
+
+```bash
+npm i openai @openai-oauth/ai-sdk
+```
+
+Connect `openai-oauth` to Vercel AI SDK with this provider.
+
+```ts
+// Any Credential Source
+import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
+
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { generateText } from "ai";
+
+const openai = createOpenAIOAuth(openaiCredentials());
+
+const result = await generateText({
+	model: openai("gpt-5.5"),
+	prompt: "Reply with exactly: hello",
+});
+```
+
+[Learn more](https://ai-sdk.dev/) about how to use Vercel AI SDK.
+See supported features [above](#what-is-supported).
+
+### `@openai-oauth/openai-client`
+
+```bash
+npm i openai @openai-oauth/openai-client
+```
+
+OpenAI JavaScript SDK options adapter.
+
+```ts
+// Any Credential Source
+import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
+
+import { createOpenAIOptions } from "@openai-oauth/openai-client";
+import OpenAI from "openai";
+
+const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
+```
+
+### Custom Adapters
+
+`openai-oauth` also works with any OpenAI-compatible client as long as it takes a custom `baseURL` and `fetch`.
+
+```ts
+import { createOpenAIOAuthTransport } from "@openai-oauth/core";
+import { openaiCredentials } from "@openai-oauth/local";
+
+const credentials = openaiCredentials();
+
+const transport = createOpenAIOAuthTransport({
+	auth: () => credentials.getSession(),
+});
+
+const baseURL = transport.baseURL;
+const fetch = transport.fetch;
+```
+
+For example, here's how you would implement the OpenAI JavaScript SDK manually:
+
+```ts
+const client = new OpenAI({
+	apiKey: "openai-oauth",
+	baseURL: transport.baseURL,
+	fetch: transport.fetch,
+});
+```
+
+## Sign in with ChatGPT Setup
+
+Use `SignInWithChatGPT` when users should sign in with their own ChatGPT account.
+
+```bash
+npm i @openai-oauth/react
+```
+
+It is currently only available for React.
+
+```tsx
+"use client";
+
+import { SignInWithChatGPT } from "@openai-oauth/react";
+
+export default function Page() {
+	return <SignInWithChatGPT />;
+}
+```
+
+The button handles the full browser sign-in flow. After sign-in, it becomes a disconnect button.
+
+To call the model, you will need a server relay due to CORS. `openai-oauth` has an out-of-the-box solution for Next.js.
+
+```ts
+// app/api/openai-oauth/[...openai]/route.ts
+
+export { GET, POST, OPTIONS } from "@openai-oauth/react/next";
+```
+
+Then use the browser credential source with the `@openai-oauth/react` client adapter:
+
+```ts
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react";
+
+const openai = createOpenAIOAuth(openaiCredentials());
+```
+
+Useful props:
+
+```tsx
+<SignInWithChatGPT
+	onSuccess={(session) => console.log(session.accountId)}
+	onError={(error) => console.error(error.message)}
+	onStateChange={(state) => console.log(state.status)}
+/>
+```
+
+Additionally, you can create a custom sign in system with the hook.
+
+```tsx
+import { useSignInWithChatGPT } from "@openai-oauth/react";
+
+function CustomLogin() {
+	const login = useSignInWithChatGPT();
+
+	if (login.status === "signed-in") {
+		return <button onClick={() => void login.logout()}>Disconnect</button>;
+	}
+
+	return (
+		<button onClick={() => void login.login()}>Sign in with ChatGPT</button>
+	);
+}
+```
+
 ## Known Limitations
 
 What is intentionally not there yet:
 
 - Only LLMs supported by Codex are available. This lists updates over time and is dependent on your Codex plan.
-- Login flow is intentionally not bundled. Simply run `npx @openai/codex login` to create the auth file.
 - There is no stateful replay support on the CLI `/v1/responses` endpoint. The proxy is stateless and expects callers to send the full conversation history.
 
 ## How it Works
 
-OpenAI's Codex CLI uses a special endpoint at `chatgpt.com/backend-api/codex/responses` to let you use special OpenAI rate limits tied to your ChatGPT account.
+OpenAI's Codex CLI uses an endpoint at `chatgpt.com/backend-api/codex/responses` to let you use special OpenAI rate limits tied to your ChatGPT account.
 
 By using the same Oauth tokens as Codex, we can effectively use OpenAI's API through Oauth instead of buying API credits.
 
-## Monorepo
-
-- `packages/openai-oauth-core`
-  Private shared transport, auth refresh, SSE helpers, and replay state.
-- `packages/openai-oauth-provider`
-  Public Vercel AI SDK provider that talks directly to Codex using local auth files.
-- `packages/openai-oauth`
-  Public CLI and localhost proxy package intended for `npx openai-oauth`.
-
-## Legal
+# Legal
 
 This is an unofficial, community-maintained project and is not affiliated with, endorsed by, or sponsored by OpenAI, Inc.
 
