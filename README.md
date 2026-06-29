@@ -1,4 +1,8 @@
-![](/assets/banner-light.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="/assets/banner-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="/assets/banner-light.png">
+  <img src="/assets/banner-light.png" alt="OpenAI OAuth: Free AI with your ChatGPT account">
+</picture>
 
 <p align="center">
     <a href="https://www.npmjs.com/package/openai-oauth">NPM</a> | <a href="#legal">Legal</a>
