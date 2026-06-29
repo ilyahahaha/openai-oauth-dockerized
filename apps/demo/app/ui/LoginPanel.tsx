@@ -7,32 +7,20 @@ import {
 	type SignInWithChatGPTState,
 } from "@openai-oauth/react"
 import { generateText } from "ai"
-import { useState } from "react"
+import Image from "next/image"
+import { type CSSProperties, useState } from "react"
 
-type RequestState =
-	| {
-			status: "idle"
-			text: null
-			error: null
-	  }
-	| {
-			status: "requesting"
-			text: null
-			error: null
-	  }
-	| {
-			status: "success"
-			text: string
-			error: null
-	  }
-	| {
-			status: "error"
-			text: null
-			error: string
-	  }
+type RequestState = {
+	status: "idle" | "requesting" | "success" | "error"
+	text: string | null
+	error: string | null
+}
+
+type DemoMode = "sign-in" | "local-api"
+type SignInCodeTab = "app" | "route"
 
 const requestModel = "gpt-5.4-mini"
-const requestInput = "hi"
+const maxResponseLines = 10
 const openai = createOpenAIOAuth(openaiCredentials())
 
 const initialAuthState: SignInWithChatGPTState = {
@@ -47,13 +35,246 @@ const initialRequestState: RequestState = {
 	error: null,
 }
 
+const signInCode = {
+	app: `"use client";
+
+import { SignInWithChatGPT } from "@openai-oauth/react";
+
+export default function App() {
+  return <SignInWithChatGPT />;
+}`,
+	route: `export { GET, POST, OPTIONS } from "@openai-oauth/react/next";`,
+} satisfies Record<SignInCodeTab, string>
+
+const requestCode = `import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react";
+import { generateText } from "ai";
+
+const openai = createOpenAIOAuth(openaiCredentials());
+
+const result = await generateText({
+  model: openai("gpt-5.4-mini"),
+  prompt: "Hello!",
+});`
+
+const localApiCommand = `npx openai-oauth`
+
+const signInCodeLineCount = Math.max(
+	...Object.values(signInCode).map((code) => code.split("\n").length),
+)
+
+function truncateResponse(text: string) {
+	const lines = text.split(/\r?\n/)
+	if (lines.length <= maxResponseLines) {
+		return text
+	}
+
+	const visibleLines = lines.slice(0, maxResponseLines)
+	const lastLine = visibleLines[maxResponseLines - 1]?.trimEnd() ?? ""
+	visibleLines[maxResponseLines - 1] = `${lastLine}...`
+	return visibleLines.join("\n")
+}
+
+const GitHubIcon = () => (
+	<svg
+		aria-hidden="true"
+		fill="currentColor"
+		focusable="false"
+		viewBox="0 0 24 24"
+	>
+		<path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2.14c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.16 1.18A10.9 10.9 0 0 1 12 6.05c.98 0 1.96.13 2.88.39 2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.42.36.78 1.06.78 2.14v3.15c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+	</svg>
+)
+
+const CopyIcon = () => (
+	<svg
+		aria-hidden="true"
+		fill="none"
+		focusable="false"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="2"
+		viewBox="0 0 24 24"
+	>
+		<rect height="14" rx="2" width="14" x="8" y="8" />
+		<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+	</svg>
+)
+
+const CheckIcon = () => (
+	<svg
+		aria-hidden="true"
+		fill="none"
+		focusable="false"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="2.2"
+		viewBox="0 0 24 24"
+	>
+		<path d="m20 6-11 11-5-5" />
+	</svg>
+)
+
+const LockIcon = () => (
+	<svg
+		aria-hidden="true"
+		fill="none"
+		focusable="false"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="2"
+		viewBox="0 0 24 24"
+	>
+		<rect height="10" rx="2" width="14" x="5" y="11" />
+		<path d="M8 11V7a4 4 0 0 1 8 0v4" />
+	</svg>
+)
+
+const keywordTokens = new Set([
+	"await",
+	"const",
+	"default",
+	"export",
+	"from",
+	"function",
+	"import",
+	"return",
+])
+
+const tokenPattern =
+	/(\/\/.*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:await|const|default|export|from|function|import|return)\b|<\/?[A-Z][A-Za-z0-9]*|[A-Za-z_$][\w$]*(?=\())/g
+
+function highlightedCode(code: string) {
+	const nodes = []
+	let index = 0
+	let key = 0
+
+	for (const match of code.matchAll(tokenPattern)) {
+		const token = match[0]
+		const start = match.index ?? 0
+
+		if (start > index) {
+			nodes.push(code.slice(index, start))
+		}
+
+		let className = "syntax-function"
+		if (token.startsWith("//")) {
+			className = "syntax-comment"
+		} else if (
+			token.startsWith('"') ||
+			token.startsWith("'") ||
+			token.startsWith("`")
+		) {
+			className = "syntax-string"
+		} else if (keywordTokens.has(token)) {
+			className = "syntax-keyword"
+		} else if (token.startsWith("<")) {
+			className = "syntax-component"
+		}
+
+		nodes.push(
+			<span className={className} key={`token-${key}`}>
+				{token}
+			</span>,
+		)
+		index = start + token.length
+		key += 1
+	}
+
+	if (index < code.length) {
+		nodes.push(code.slice(index))
+	}
+
+	return nodes
+}
+
+const ArrowUpIcon = () => (
+	<span aria-hidden="true" className="arrowUp">
+		↑
+	</span>
+)
+
+function CodeBlock({
+	code,
+	minLines,
+	tabs,
+	activeTab,
+	onTabChange,
+}: {
+	code: string
+	minLines?: number
+	tabs?: Array<{ id: SignInCodeTab; label: string }>
+	activeTab?: SignInCodeTab
+	onTabChange?: (tab: SignInCodeTab) => void
+}) {
+	const [hasCopied, setHasCopied] = useState(false)
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard?.writeText(code)
+		} catch {
+			// Clipboard permissions can be stricter in embedded browsers.
+		}
+		setHasCopied(true)
+		window.setTimeout(() => setHasCopied(false), 1800)
+	}
+
+	return (
+		<div
+			className="codeFrame"
+			style={
+				minLines
+					? ({ "--code-min-lines": minLines } as CSSProperties)
+					: undefined
+			}
+		>
+			{tabs ? (
+				<div aria-label="Code file" className="codeTabs" role="tablist">
+					{tabs.map((tab) => (
+						<button
+							aria-selected={activeTab === tab.id}
+							className="codeTab"
+							key={tab.id}
+							onClick={() => onTabChange?.(tab.id)}
+							role="tab"
+							type="button"
+						>
+							{tab.label}
+						</button>
+					))}
+				</div>
+			) : null}
+			<pre>
+				<code>{highlightedCode(code)}</code>
+			</pre>
+			<button
+				aria-label={hasCopied ? "Code copied" : "Copy code"}
+				className="codeCopyButton"
+				onClick={() => void handleCopy()}
+				type="button"
+			>
+				{hasCopied ? <CheckIcon /> : <CopyIcon />}
+			</button>
+		</div>
+	)
+}
+
 export function LoginPanel() {
 	const [authState, setAuthState] =
 		useState<SignInWithChatGPTState>(initialAuthState)
 	const [requestState, setRequestState] =
 		useState<RequestState>(initialRequestState)
+	const [prompt, setPrompt] = useState("")
+	const [activeSignInTab, setActiveSignInTab] = useState<SignInCodeTab>("app")
+	const [activeMode, setActiveMode] = useState<DemoMode>("sign-in")
+	const [hasCopiedLocalCommand, setHasCopiedLocalCommand] = useState(false)
+
 	const isSignedIn = authState.status === "signed-in"
 	const isRequesting = requestState.status === "requesting"
+	const canRequest = isSignedIn && !isRequesting && prompt.trim().length > 0
 
 	const handleAuthStateChange = (next: SignInWithChatGPTState) => {
 		setAuthState(next)
@@ -63,16 +284,21 @@ export function LoginPanel() {
 	}
 
 	const handleMakeRequest = async () => {
-		setRequestState({
+		const input = prompt.trim()
+		if (!input || isRequesting) {
+			return
+		}
+
+		setRequestState((current) => ({
 			status: "requesting",
-			text: null,
+			text: current.text,
 			error: null,
-		})
+		}))
 
 		try {
 			const result = await generateText({
 				model: openai(requestModel),
-				prompt: requestInput,
+				prompt: input,
 			})
 
 			setRequestState({
@@ -81,45 +307,217 @@ export function LoginPanel() {
 				error: null,
 			})
 		} catch (error) {
-			setRequestState({
+			setRequestState((current) => ({
 				status: "error",
-				text: null,
+				text: current.text,
 				error:
 					error instanceof Error
 						? error.message
 						: "The request failed unexpectedly.",
-			})
+			}))
 		}
 	}
 
+	const handleCopyLocalCommand = async () => {
+		try {
+			await navigator.clipboard?.writeText(localApiCommand)
+		} catch {
+			// Clipboard permissions can be stricter in embedded browsers.
+		}
+		setHasCopiedLocalCommand(true)
+		window.setTimeout(() => setHasCopiedLocalCommand(false), 1800)
+	}
+
 	return (
-		<main className="demo">
-			<SignInWithChatGPT onStateChange={handleAuthStateChange} />
+		<main className="demoShell">
+			<header className="siteHeader">
+				<a aria-label="OpenAI OAuth" className="wordmark" href="/">
+					<Image
+						alt=""
+						height={28}
+						priority
+						src="/openai-oauth-wordmark.svg"
+						width={202}
+					/>
+				</a>
+				<nav aria-label="Demo modes" className="modeTabs">
+					<button
+						aria-current={activeMode === "sign-in" ? "page" : undefined}
+						onClick={() => setActiveMode("sign-in")}
+						type="button"
+					>
+						Sign in with ChatGPT
+					</button>
+					<button
+						aria-current={activeMode === "local-api" ? "page" : undefined}
+						onClick={() => setActiveMode("local-api")}
+						type="button"
+					>
+						Free OpenAI API
+					</button>
+				</nav>
+				<a
+					aria-label="GitHub"
+					className="githubLink"
+					href="https://github.com/EvanZhouDev/openai-oauth"
+					rel="noreferrer"
+					target="_blank"
+				>
+					<GitHubIcon />
+				</a>
+			</header>
 
-			<button
-				className="requestButton"
-				disabled={!isSignedIn || isRequesting}
-				onClick={() => void handleMakeRequest()}
-				type="button"
-			>
-				{isRequesting ? "Requesting..." : "Make request"}
-			</button>
+			{activeMode === "sign-in" ? (
+				<section
+					aria-label="Sign in with ChatGPT demo"
+					className="demoPanel signInPanel"
+				>
+					<div className="stepRow">
+						<section className="stepDocs">
+							<div className="stepHeading">
+								<span className="stepNumber">1</span>
+								<div>
+									<h1>Add sign in</h1>
+									<p>Let users connect their ChatGPT account.</p>
+								</div>
+							</div>
+							<CodeBlock
+								activeTab={activeSignInTab}
+								code={signInCode[activeSignInTab]}
+								minLines={signInCodeLineCount}
+								onTabChange={setActiveSignInTab}
+								tabs={[
+									{ id: "app", label: "app.tsx" },
+									{
+										id: "route",
+										label: "app/api/openai-oauth/[...openai]/route.ts",
+									},
+								]}
+							/>
+						</section>
 
-			{authState.status === "error" ? (
-				<p className="message" role="alert">
-					{authState.error.message}
+						<section className="stepOutput signInOutput">
+							<h2 className="outputHeading">Try it out</h2>
+							<SignInWithChatGPT
+								onStateChange={handleAuthStateChange}
+								style={{
+									fontSize: 16,
+									minHeight: 58,
+									minWidth: 274,
+									padding: "16px 24px",
+								}}
+							/>
+							<p className="safetyNote">
+								<LockIcon />
+								<span>
+									Credentials are encrypted and
+									<br />
+									stored locally in this browser.
+								</span>
+							</p>
+							{authState.status === "error" ? (
+								<p className="errorText" role="alert">
+									{authState.error.message}
+								</p>
+							) : null}
+						</section>
+					</div>
+
+					<div className={`stepRow ${isSignedIn ? "" : "locked"}`}>
+						<section className="stepDocs">
+							<div className="stepHeading">
+								<span className="stepNumber">2</span>
+								<div>
+									<h2>Make a request</h2>
+									<p>Use the AI SDK with the signed-in account.</p>
+								</div>
+							</div>
+							<CodeBlock code={requestCode} />
+						</section>
+
+						<section className="stepOutput requestOutput">
+							<form
+								className="askForm"
+								onSubmit={(event) => {
+									event.preventDefault()
+									void handleMakeRequest()
+								}}
+							>
+								<label className="srOnly" htmlFor="prompt">
+									Ask anything
+								</label>
+								<input
+									disabled={!isSignedIn}
+									id="prompt"
+									onChange={(event) => setPrompt(event.target.value)}
+									placeholder="Ask anything"
+									value={prompt}
+								/>
+								<button aria-label="Send" disabled={!canRequest} type="submit">
+									<ArrowUpIcon />
+								</button>
+							</form>
+
+							{requestState.status === "requesting" ? (
+								<p className="statusText">Asking {requestModel}...</p>
+							) : null}
+
+							{requestState.text ? (
+								<output className="responseText">
+									{truncateResponse(requestState.text)}
+								</output>
+							) : null}
+
+							{requestState.status === "error" && requestState.error ? (
+								<p className="errorText" role="alert">
+									{requestState.error}
+								</p>
+							) : null}
+						</section>
+					</div>
+				</section>
+			) : (
+				<section
+					aria-label="Free OpenAI API demo"
+					className="demoPanel localApiPanel"
+				>
+					<div className="localApiContent">
+						<h1>
+							Free AI API with your <br />
+							ChatGPT Account
+						</h1>
+						<p>Run in your terminal to get started today.</p>
+						<div className="localCommand">
+							<code>{localApiCommand}</code>
+							<button
+								aria-label={
+									hasCopiedLocalCommand ? "Command copied" : "Copy command"
+								}
+								onClick={() => void handleCopyLocalCommand()}
+								type="button"
+							>
+								{hasCopiedLocalCommand ? <CheckIcon /> : <CopyIcon />}
+							</button>
+						</div>
+					</div>
+				</section>
+			)}
+
+			<section className="docsCta">
+				<h2>Build with OpenAI OAuth</h2>
+				<p>
+					Add Sign in with ChatGPT to your product, start a <br />
+					dev proxy, or connect through the TypeScript SDK.
 				</p>
-			) : null}
-
-			{requestState.status === "success" ? (
-				<output className="response">{requestState.text}</output>
-			) : null}
-
-			{requestState.status === "error" ? (
-				<p className="message" role="alert">
-					{requestState.error}
-				</p>
-			) : null}
+				<a
+					className="docsButton"
+					href="https://github.com/EvanZhouDev/openai-oauth#readme"
+					rel="noreferrer"
+					target="_blank"
+				>
+					Go to Documentation
+				</a>
+			</section>
 		</main>
 	)
 }
