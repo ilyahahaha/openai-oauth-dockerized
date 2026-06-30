@@ -2,10 +2,22 @@
 	"name": "@openai-oauth/ai-sdk",
 	"version": "2.0.0",
 	"description": "Vercel AI SDK provider adapter for openai-oauth auth handles.",
+	"keywords": [
+		"openai",
+		"oauth",
+		"chatgpt",
+		"codex",
+		"ai-sdk",
+		"vercel-ai-sdk"
+	],
 	"type": "module",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		}
 	},
@@ -21,14 +33,17 @@
 		"test": "vitest run",
 		"test:live": "LIVE_CODEX_E2E=1 vitest run test/live.e2e.test.ts"
 	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"peerDependencies": {
+		"ai": "^6.0.116"
+	},
 	"dependencies": {
 		"@ai-sdk/openai": "3.0.41",
 		"@ai-sdk/provider": "3.0.8",
 		"@ai-sdk/provider-utils": "4.0.19",
 		"@openai-oauth/core": "workspace:*"
-	},
-	"peerDependencies": {
-		"ai": "^6.0.116"
 	},
 	"devDependencies": {
 		"@openai-oauth/local": "workspace:*",
@@ -40,6 +55,11 @@
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git",
+		"directory": "packages/ai-sdk"
+	},
 	"bugs": {
 		"url": "https://github.com/EvanZhouDev/openai-oauth/issues"
 	},

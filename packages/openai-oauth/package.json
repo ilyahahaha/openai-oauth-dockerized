@@ -2,13 +2,25 @@
 	"name": "openai-oauth",
 	"version": "2.0.0",
 	"description": "Free OpenAI API access with your ChatGPT account.",
+	"keywords": [
+		"openai",
+		"oauth",
+		"chatgpt",
+		"codex",
+		"cli",
+		"openai-compatible"
+	],
 	"type": "module",
+	"sideEffects": false,
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"bin": {
-		"openai-oauth": "./dist/cli.js"
+		"openai-oauth": "dist/cli.js"
 	},
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		}
 	},
@@ -42,6 +54,11 @@
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git",
+		"directory": "packages/openai-oauth"
+	},
 	"bugs": {
 		"url": "https://github.com/EvanZhouDev/openai-oauth/issues"
 	},

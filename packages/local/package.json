@@ -2,6 +2,14 @@
 	"name": "@openai-oauth/local",
 	"version": "2.0.0",
 	"description": "Local Codex auth-file auth handle for openai-oauth.",
+	"keywords": [
+		"openai",
+		"oauth",
+		"chatgpt",
+		"codex",
+		"local",
+		"credentials"
+	],
 	"type": "module",
 	"sideEffects": false,
 	"main": "./dist/index.js",
@@ -9,6 +17,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		}
 	},
@@ -23,6 +32,9 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run"
 	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@openai-oauth/core": "workspace:*"
 	},
@@ -33,6 +45,11 @@
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git",
+		"directory": "packages/local"
+	},
 	"bugs": {
 		"url": "https://github.com/EvanZhouDev/openai-oauth/issues"
 	},

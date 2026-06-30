@@ -8,13 +8,13 @@ import {
 import { openaiCredentials } from "@openai-oauth/local"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
-import packageJson from "../package.json" with { type: "json" }
 import { installCliWarningLogger, toStartupMessage } from "./cli-logging.js"
 import { startOpenAIOAuthServer } from "./index.js"
 import { runOpenAIOAuthLogin } from "./login.js"
 import { resolveOpenAIOAuthModels } from "./models.js"
 import { DEFAULT_PORT } from "./shared.js"
 import { checkForOpenAIOAuthUpdates } from "./update-check.js"
+import { packageVersion } from "./version.js"
 
 export type CliArgs = {
 	command: "serve" | "login"
@@ -68,7 +68,7 @@ const helpLines = [
 	"",
 	"Flags",
 	"  --help                     Show help",
-	`  --version                  Show version (${packageJson.version})`,
+	`  --version                  Show version (${packageVersion})`,
 	"",
 	"Notes",
 	"  If no auth file is found, run: npx openai-oauth login",
@@ -261,7 +261,7 @@ const toMissingAuthFileMessage = (authFilePath: string | undefined): string => {
 }
 
 const runUpdateCheck = () =>
-	checkForOpenAIOAuthUpdates(packageJson.version, {
+	checkForOpenAIOAuthUpdates(packageVersion, {
 		onWarning: defaultUpdateCheckWarning,
 	})
 
@@ -272,7 +272,7 @@ export const runCli = async (argv: string[] = hideBin(process.argv)) => {
 	}
 
 	if (isVersionFlag(argv)) {
-		console.log(packageJson.version)
+		console.log(packageVersion)
 		return
 	}
 

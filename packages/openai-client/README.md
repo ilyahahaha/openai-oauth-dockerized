@@ -1,24 +1,40 @@
 # @openai-oauth/openai-client
 
-OpenAI JavaScript SDK adapter for openai-oauth auth handles.
+[Docs](https://github.com/EvanZhouDev/openai-oauth#client-adapters) | [GitHub](https://github.com/EvanZhouDev/openai-oauth) | [npm](https://www.npmjs.com/package/@openai-oauth/openai-client)
+
+Use OpenAI OAuth credentials with the OpenAI JavaScript SDK.
+
+```bash
+npm i @openai-oauth/openai-client openai
+```
+
+Quickstart:
 
 ```ts
-import OpenAI from "openai";
 import { createOpenAIOptions } from "@openai-oauth/openai-client";
-import { openaiCredentials } from "@openai-oauth/react";
+import { openaiCredentials } from "@openai-oauth/local";
+import OpenAI from "openai";
 
 const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
 ```
 
-## API
+## Package Notes
 
-`createOpenAIOptions(input, options?)`
+`@openai-oauth/openai-client` turns an OpenAI OAuth credential source into options for `new OpenAI()`.
 
-Input:
+It works with any credential source:
 
 ```ts
-type OpenAIClientInput = OpenAIOAuthTransport | OpenAIOAuth;
+import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
 
+const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
+```
+
+The default `apiKey` is the placeholder string `openai-oauth`. Authentication is handled by the custom `fetch` implementation.
+
+Useful options:
+
+```ts
 type CreateOpenAIClientOptions = {
 	apiKey?: string;
 	baseURL?: string;
@@ -39,4 +55,6 @@ type OpenAIClientOptions = {
 };
 ```
 
-The default `apiKey` is the placeholder string `openai-oauth`; authentication is handled by the transport fetch.
+## More
+
+[Learn more in the openai-oauth README.](https://github.com/EvanZhouDev/openai-oauth#client-adapters)

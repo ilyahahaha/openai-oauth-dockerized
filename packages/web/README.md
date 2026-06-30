@@ -1,20 +1,32 @@
 # @openai-oauth/web
 
-Browser auth handle, browser session storage, direct token exchange,
-and framework-neutral model relay.
+[Docs](https://github.com/EvanZhouDev/openai-oauth#react-component) | [GitHub](https://github.com/EvanZhouDev/openai-oauth) | [npm](https://www.npmjs.com/package/@openai-oauth/web)
 
-React apps normally use `@openai-oauth/react`, which depends on this package and
-re-exports `openaiCredentials()`.
+Framework-neutral browser credentials, encrypted browser storage, and model relay helpers.
 
-## Auth Handle
+```bash
+npm i @openai-oauth/web
+```
+
+Most React apps should use `@openai-oauth/react`, which depends on this package and re-exports `openaiCredentials()`.
 
 ```ts
 import { openaiCredentials } from "@openai-oauth/web";
 
-const auth = openaiCredentials();
+const credentials = openaiCredentials();
 ```
 
-Input:
+## Package Notes
+
+`@openai-oauth/web` is the lower-level web package. Use it when you need framework-neutral primitives instead of the React button and hook.
+
+### Browser Credentials
+
+```ts
+const credentials = openaiCredentials();
+```
+
+Useful options:
 
 ```ts
 type WebOpenAIOAuthOptions = {
@@ -34,7 +46,11 @@ type WebOpenAIOAuthOptions = {
 };
 ```
 
-Output:
+`openaiCredentials()` reads the browser session store and refreshes with the stored refresh token when needed.
+
+`relay` defaults to `/api/openai-oauth`. SDK adapters use that relay for browser model calls.
+
+`openaiCredentials()` returns an `OpenAIOAuth` credential source:
 
 ```ts
 type OpenAIOAuth = {
@@ -44,13 +60,27 @@ type OpenAIOAuth = {
 };
 ```
 
-`getSession()` reads the browser session store and refreshes with the stored
-refresh token when needed.
+### Session Store
 
-`relay` defaults to `/api/openai-oauth`. SDK adapters use that relay for browser
-model calls.
+```ts
+import { createSessionStore } from "@openai-oauth/web";
 
-## Model Relay
+const sessionStore = createSessionStore();
+```
+
+The default store persists the session in IndexedDB and encrypts each payload with a non-extractable WebCrypto AES-GCM key.
+
+Apps can provide their own store:
+
+```ts
+type SessionStore = {
+	get(): Promise<OpenAIOAuthSession | null>;
+	set(session: OpenAIOAuthSession): Promise<void>;
+	clear(): Promise<void>;
+};
+```
+
+### Model Relay
 
 ```ts
 import { createRelayHandler } from "@openai-oauth/web";
@@ -58,7 +88,9 @@ import { createRelayHandler } from "@openai-oauth/web";
 const handler = createRelayHandler();
 ```
 
-Input:
+The relay reads `Authorization` and `chatgpt-account-id` from the browser request, forwards the model call to ChatGPT/Codex, and does not store credentials.
+
+Useful options:
 
 ```ts
 type RelayHandlerOptions = {
@@ -70,36 +102,13 @@ type RelayHandlerOptions = {
 };
 ```
 
-Output:
+The relay handler has this shape:
 
 ```ts
 type OpenAIOAuthHandler = (request: Request) => Promise<Response>;
 ```
 
-The handler reads `Authorization` and `chatgpt-account-id` from the browser
-request, forwards the model call to ChatGPT/Codex, and does not store
-session.
-
-## Session Store
-
-```ts
-import { createSessionStore } from "@openai-oauth/web";
-
-const sessionStore = createSessionStore();
-```
-
-The default store persists session in IndexedDB and encrypts each payload
-with a non-extractable WebCrypto AES-GCM key.
-
-```ts
-type SessionStore = {
-	get(): Promise<OpenAIOAuthSession | null>;
-	set(session: OpenAIOAuthSession): Promise<void>;
-	clear(): Promise<void>;
-};
-```
-
-## Direct Exchange
+### Direct Token Exchange
 
 ```ts
 import { exchangeCode, refreshSession } from "@openai-oauth/web";
@@ -114,3 +123,7 @@ const refreshed = await refreshSession({
 	refreshToken: session.refreshToken,
 });
 ```
+
+## More
+
+[Learn more in the openai-oauth README.](https://github.com/EvanZhouDev/openai-oauth#react-component)
