@@ -411,6 +411,8 @@ export default function Page() {
 
 The button handles the full browser sign-in flow. After sign-in, it becomes a disconnect button.
 
+The prebuilt button includes a small "Powered by OpenAI OAuth" link by default to support this project. Pass `hideAttribution` to remove the attribution link.
+
 Due to CORS, you will need a server relay to call the actual AI API. One way to do this is to send the browser session to your own app route:
 
 ```ts
@@ -449,6 +451,7 @@ Useful props:
 	onSuccess={(session) => console.log(session.accountId)}
 	onError={(error) => console.error(error.message)}
 	onStateChange={(state) => console.log(state.status)}
+	hideAttribution
 />
 ```
 

@@ -379,6 +379,7 @@ export function LoginPanel() {
 						<section className="stepOutput signInOutput">
 							<h2 className="outputHeading">Try it out</h2>
 							<SignInWithChatGPT
+								hideAttribution
 								onStateChange={handleAuthStateChange}
 								style={{
 									fontSize: 16,

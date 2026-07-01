@@ -24,6 +24,8 @@ export default function Page() {
 
 `SignInWithChatGPT` renders the OpenAI-style sign-in button. After sign-in, it becomes a disconnect button.
 
+The prebuilt button includes a small "Powered by OpenAI OAuth" link by default. Pass `hideAttribution` to render only the button with no attribution link or reserved space.
+
 No app route is required for login. The hook creates the authorization URL, stores PKCE/state in `sessionStorage`, exchanges the callback code directly, and stores the resulting session in the browser session store.
 
 Browser model calls must go through your own app route because ChatGPT does not allow direct browser CORS requests. Send the signed-in session to that route with `openaiAuthHeaders()`:
@@ -73,6 +75,7 @@ Useful props:
 	onSuccess={(session) => console.log(session.accountId)}
 	onError={(error) => console.error(error.message)}
 	onStateChange={(state) => console.log(state.status)}
+	hideAttribution
 />
 ```
 

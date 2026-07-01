@@ -18,9 +18,17 @@ export type SignInWithChatGPTProps = Omit<
 		loadingLabel?: string
 		redirectingLabel?: string
 		signedInLabel?: string
+		hideAttribution?: boolean
 		hideWhenSignedIn?: boolean
 		showLogo?: boolean
 	}
+
+const containerStyle: CSSProperties = {
+	alignItems: "center",
+	display: "inline-flex",
+	flexDirection: "column",
+	gap: 5,
+}
 
 const buttonStyle: CSSProperties = {
 	alignItems: "center",
@@ -48,6 +56,18 @@ const logoStyle: CSSProperties = {
 	flex: "0 0 auto",
 	height: 22,
 	width: 22,
+}
+
+const attributionStyle: CSSProperties = {
+	color: "#8f8f8f",
+	fontFamily:
+		'-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+	fontSize: 10,
+	fontWeight: 400,
+	lineHeight: 1.2,
+	textDecoration: "underline",
+	textDecorationColor: "currentColor",
+	textUnderlineOffset: 2,
 }
 
 const OpenAILogo = () => (
@@ -88,6 +108,7 @@ export const SignInWithChatGPT = ({
 	loadingLabel = "Connecting...",
 	redirectingLabel = "Signing in...",
 	signedInLabel = "Disconnect ChatGPT",
+	hideAttribution = false,
 	hideWhenSignedIn = false,
 	showLogo = true,
 	children = "Sign in with ChatGPT",
@@ -148,7 +169,7 @@ export const SignInWithChatGPT = ({
 		return null
 	}
 
-	return (
+	const button = (
 		<button
 			{...props}
 			type={type}
@@ -173,5 +194,23 @@ export const SignInWithChatGPT = ({
 							: children}
 			</span>
 		</button>
+	)
+
+	if (hideAttribution) {
+		return button
+	}
+
+	return (
+		<span style={containerStyle}>
+			{button}
+			<a
+				href="https://github.com/EvanZhouDev/openai-oauth"
+				rel="noreferrer"
+				style={attributionStyle}
+				target="_blank"
+			>
+				Powered by OpenAI OAuth
+			</a>
+		</span>
 	)
 }
