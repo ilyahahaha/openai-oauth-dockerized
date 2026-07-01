@@ -20,7 +20,6 @@ export {
 	collectCompletedResponseFromSse,
 	createCodexOAuthClient,
 	createCodexOAuthFetch,
-	createOpenAIOAuthRelayTransport,
 	createOpenAIOAuthRequest,
 	createOpenAIOAuthTransport,
 	DEFAULT_CODEX_BASE_URL,

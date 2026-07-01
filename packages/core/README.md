@@ -42,7 +42,6 @@ Node auth-file helpers are also exported for the CLI and `@openai-oauth/local`.
 Core exports include:
 
 - `createOpenAIOAuthTransport`
-- `createOpenAIOAuthRelayTransport`
 - `createOpenAIOAuthRequest`
 - `createCodexOAuthClient`
 - `exchangeOpenAIOAuthCode`

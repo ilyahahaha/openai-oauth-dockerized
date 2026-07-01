@@ -9,6 +9,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@ai-sdk/react": "3.0.118",
 		"@openai-oauth/ai-sdk": "workspace:*",
 		"@openai-oauth/react": "workspace:*",
 		"ai": "6.0.116",

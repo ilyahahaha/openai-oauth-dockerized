@@ -1,7 +1,10 @@
 export {
+	type BrowserSessionOptions,
 	type BrowserSessionStoreOptions,
 	createSessionStore,
-	openaiCredentials,
+	getSession,
+	type OpenAIAuthHeadersOptions,
+	openaiAuthHeaders,
 } from "@openai-oauth/web"
 export {
 	SignInWithChatGPT,

@@ -38,9 +38,20 @@ const openai = createOpenAIOAuth(openaiCredentials());
 Use browser credentials after Sign in with ChatGPT:
 
 ```ts
-import { openaiCredentials } from "@openai-oauth/react";
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import { generateText } from "ai";
 
-const openai = createOpenAIOAuth(openaiCredentials());
+export async function POST(request: Request) {
+	const openai = createOpenAIOAuth(openaiCredentials(request));
+
+	const result = await generateText({
+		model: openai("gpt-5.4-mini"),
+		prompt: await request.text(),
+	});
+
+	return new Response(result.text);
+}
 ```
 
 API shape:

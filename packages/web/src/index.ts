@@ -1,12 +1,8 @@
 import {
-	collectCompletedResponseFromSse,
-	createCodexOAuthClient,
 	createOpenAIOAuthRequest,
 	deriveAccountId,
 	exchangeOpenAIOAuthCode,
 	type FetchFunction,
-	normalizeCodexResponsesBody,
-	type OpenAIOAuth,
 	type OpenAIOAuthRequest,
 	type OpenAIOAuthRequestOptions,
 	type OpenAIOAuthSession,
@@ -14,10 +10,9 @@ import {
 	parseJwtClaims,
 	refreshOpenAIOAuthTokens,
 	type SessionStore,
-	usesServerReplayState,
 } from "@openai-oauth/core"
 
-export type { OpenAIOAuth, OpenAIOAuthSession, SessionStore }
+export type { OpenAIOAuthSession, SessionStore }
 
 export type BrowserSessionStoreOptions = {
 	dbName?: string
@@ -50,28 +45,19 @@ export type RefreshSessionInput = {
 	signal?: AbortSignal
 }
 
-export type WebOpenAIOAuthOptions = {
+export type BrowserSessionOptions = {
 	sessionStore?: SessionStore
 	clientId?: string
 	issuer?: string
 	tokenUrl?: string
 	fetch?: FetchFunction
-	baseURL?: string
-	headers?: Record<string, string>
-	instructions?: string
-	openAIBaseURL?: string
-	relay?: string | false
-	storeResponses?: boolean
 	refresh?: boolean
 	now?: () => Date
 }
 
-export type RelayHandlerOptions = {
-	basePath?: string
-	fetch?: FetchFunction
-	headers?: Record<string, string>
-	instructions?: string
-	storeResponses?: boolean
+export type OpenAIAuthHeadersOptions = BrowserSessionOptions & {
+	headers?: HeadersInit
+	optional?: boolean
 }
 
 export type StartLoginOptions = Omit<
@@ -125,227 +111,11 @@ const defaultStoreSettings: StoreSettings = {
 }
 
 const pendingLoginKey = "openai-oauth:pending-login"
-const defaultRelayBasePath = "/api/openai-oauth"
 const refreshExpiryMarginMs = 5 * 60 * 1000
 const refreshIntervalMs = 55 * 60 * 1000
 
-const jsonHeaders = {
-	"Content-Type": "application/json",
-}
-
-const sseHeaders = {
-	"Content-Type": "text/event-stream; charset=utf-8",
-	"Cache-Control": "no-cache, no-transform",
-	"X-Accel-Buffering": "no",
-}
-
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === "object" && value !== null && !Array.isArray(value)
-
-const trimTrailingSlash = (value: string): string => value.replace(/\/$/, "")
-
-const getBearerToken = (request: Request): string | undefined => {
-	const authorization = request.headers.get("authorization")
-	const match = authorization?.match(/^Bearer\s+(.+)$/i)
-	return match?.[1]
-}
-
-const resolveHandlerPath = (request: Request, basePath: string): string => {
-	const url = new URL(request.url)
-	const normalizedBasePath = trimTrailingSlash(basePath)
-	let pathname = url.pathname
-
-	if (pathname === normalizedBasePath) {
-		pathname = "/"
-	} else if (
-		normalizedBasePath !== "/" &&
-		pathname.startsWith(`${normalizedBasePath}/`)
-	) {
-		pathname = pathname.slice(normalizedBasePath.length)
-	}
-
-	if (pathname === "/v1") {
-		pathname = "/"
-	} else if (pathname.startsWith("/v1/")) {
-		pathname = pathname.slice(3)
-	}
-
-	return pathname
-}
-
-const copyResponse = (response: Response): Response =>
-	new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers: new Headers(response.headers),
-	})
-
-type ServerSentEventBlock = {
-	event?: string
-	data?: string
-}
-
-const terminalServerSentEvents = new Set([
-	"error",
-	"response.completed",
-	"response.failed",
-	"response.cancelled",
-	"response.canceled",
-	"response.incomplete",
-])
-
-const terminalResponseStatuses = new Set([
-	"completed",
-	"failed",
-	"cancelled",
-	"canceled",
-	"incomplete",
-])
-
-const parseServerSentEventBlock = (block: string): ServerSentEventBlock => {
-	const event: ServerSentEventBlock = {}
-	const dataLines: string[] = []
-
-	for (const line of block.split(/\r?\n/)) {
-		if (line.startsWith("event:")) {
-			event.event = line.slice(6).trim()
-			continue
-		}
-
-		if (line.startsWith("data:")) {
-			dataLines.push(line.slice(5).trimStart())
-		}
-	}
-
-	if (dataLines.length > 0) {
-		event.data = dataLines.join("\n")
-	}
-
-	return event
-}
-
-const isTerminalServerSentEventPayload = (
-	data: string | undefined,
-): boolean => {
-	if (data === "[DONE]") {
-		return true
-	}
-
-	if (typeof data !== "string" || data.length === 0) {
-		return false
-	}
-
-	try {
-		const parsed = JSON.parse(data)
-		if (!isRecord(parsed)) {
-			return false
-		}
-
-		const type = parsed.type
-		if (typeof type === "string" && terminalServerSentEvents.has(type)) {
-			return true
-		}
-
-		const response = parsed.response
-		if (isRecord(response)) {
-			const responseType = response.type
-			const status = response.status
-			return (
-				(typeof responseType === "string" &&
-					terminalServerSentEvents.has(responseType)) ||
-				(typeof status === "string" && terminalResponseStatuses.has(status))
-			)
-		}
-	} catch {}
-
-	return false
-}
-
-const isTerminalServerSentEventBlock = (block: string): boolean => {
-	const event = parseServerSentEventBlock(block)
-	return (
-		(typeof event.event === "string" &&
-			terminalServerSentEvents.has(event.event)) ||
-		isTerminalServerSentEventPayload(event.data)
-	)
-}
-
-const closeResponseOnTerminalServerSentEvent = (
-	response: Response,
-): Response => {
-	if (
-		!response.body ||
-		!response.headers.get("content-type")?.includes("text/event-stream")
-	) {
-		return response
-	}
-
-	const reader = response.body.getReader()
-	const stream = new ReadableStream<Uint8Array>({
-		async start(controller) {
-			let buffer = ""
-
-			try {
-				while (true) {
-					const { value, done } = await reader.read()
-					if (done) {
-						break
-					}
-
-					buffer += textDecoder.decode(value, { stream: true })
-					const blocks = buffer.split(/\r?\n\r?\n/)
-					buffer = blocks.pop() ?? ""
-
-					for (const block of blocks) {
-						if (block.trim().length === 0) {
-							continue
-						}
-
-						controller.enqueue(textEncoder.encode(`${block}\n\n`))
-
-						if (isTerminalServerSentEventBlock(block)) {
-							void reader.cancel().catch(() => {})
-							controller.close()
-							return
-						}
-					}
-
-					if (
-						buffer.trim().length > 0 &&
-						isTerminalServerSentEventBlock(buffer)
-					) {
-						controller.enqueue(textEncoder.encode(`${buffer}\n\n`))
-						void reader.cancel().catch(() => {})
-						controller.close()
-						return
-					}
-				}
-
-				buffer += textDecoder.decode()
-				if (buffer.trim().length > 0) {
-					controller.enqueue(textEncoder.encode(buffer))
-				}
-				controller.close()
-			} catch (error) {
-				controller.error(error)
-			} finally {
-				reader.releaseLock()
-			}
-		},
-		cancel() {
-			return reader.cancel()
-		},
-	})
-
-	return new Response(stream, {
-		status: response.status,
-		statusText: response.statusText,
-		headers: new Headers(response.headers),
-	})
-}
 
 const assertBrowserStorage = (): void => {
 	if (
@@ -621,27 +391,6 @@ const shouldRefreshSession = (
 		: false
 }
 
-const toJsonResponse = (body: unknown, status = 200): Response =>
-	new Response(JSON.stringify(body), {
-		status,
-		headers: jsonHeaders,
-	})
-
-const toErrorResponse = (
-	code: string,
-	message: string,
-	status: number,
-): Response =>
-	toJsonResponse(
-		{
-			error: {
-				code,
-				message,
-			},
-		},
-		status,
-	)
-
 const toSession = (
 	token: OpenAIOAuthTokenResponse,
 	options: {
@@ -710,192 +459,48 @@ export const refreshSession = async (
 	})
 }
 
-const readJsonObjectFromText = (bodyText: string): Record<string, unknown> => {
-	let parsed: unknown
-	try {
-		parsed = JSON.parse(bodyText)
-	} catch {
-		throw new Error("Request body must be valid JSON.")
-	}
-
-	if (!isRecord(parsed)) {
-		throw new Error("Request body must be a JSON object.")
-	}
-
-	return parsed
-}
-
-const handleRelayedResponsesRequest = async (
-	bodyText: string,
-	options: RelayHandlerOptions,
-	client: ReturnType<typeof createCodexOAuthClient>,
-	signal: AbortSignal,
-): Promise<Response> => {
-	const body = readJsonObjectFromText(bodyText)
-	if (usesServerReplayState(body)) {
-		return toErrorResponse(
-			"invalid_request",
-			"Stateless Codex responses endpoint does not support `previous_response_id` or `item_reference`. Replay the full conversation history in `input` on each request.",
-			400,
-		)
-	}
-
-	const wantsStream = body.stream === true
-	const upstream = await client.request("/responses", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(
-			normalizeCodexResponsesBody(body, {
-				forceStream: true,
-				instructions: options.instructions,
-				storeResponses: options.storeResponses,
-			}),
-		),
-		signal,
-	})
-
-	if (!upstream.ok) {
-		return copyResponse(upstream)
-	}
-
-	if (wantsStream) {
-		return closeResponseOnTerminalServerSentEvent(
-			new Response(upstream.body, {
-				status: upstream.status,
-				statusText: upstream.statusText,
-				headers: sseHeaders,
-			}),
-		)
-	}
-
-	const completed = await collectCompletedResponseFromSse(
-		upstream.body ?? new ReadableStream(),
-	)
-	return toJsonResponse(completed)
-}
-
-export const createRelayHandler = (
-	options: RelayHandlerOptions = {},
-): ((request: Request) => Promise<Response>) => {
-	const basePath = options.basePath ?? defaultRelayBasePath
-
-	return async (request) => {
-		try {
-			if (request.method === "OPTIONS") {
-				return new Response(null, { status: 204 })
-			}
-
-			const path = resolveHandlerPath(request, basePath)
-			if (request.method === "GET" && (path === "/" || path === "/health")) {
-				return Response.json({ ok: true })
-			}
-
-			const accessToken = getBearerToken(request)
-			const accountId = request.headers.get("chatgpt-account-id") ?? undefined
-			if (!accessToken || !accountId) {
-				return toErrorResponse(
-					"unauthorized",
-					"`Authorization` and `chatgpt-account-id` headers are required.",
-					401,
-				)
-			}
-
-			const client = createCodexOAuthClient({
-				auth: {
-					accessToken,
-					accountId,
-				},
-				fetch: options.fetch,
-				headers: options.headers,
-				instructions: options.instructions,
-				responsesState: false,
-				storeResponses: options.storeResponses,
-			})
-			const body =
-				request.method === "GET" || request.method === "HEAD"
-					? undefined
-					: await request.text()
-
-			if (request.method === "POST" && path === "/responses") {
-				return handleRelayedResponsesRequest(
-					body ?? "",
-					options,
-					client,
-					request.signal,
-				)
-			}
-
-			const upstream = await client.request(path, {
-				method: request.method,
-				headers: request.headers,
-				body,
-				signal: request.signal,
-			})
-
-			return closeResponseOnTerminalServerSentEvent(copyResponse(upstream))
-		} catch (error) {
-			return toErrorResponse(
-				"upstream_error",
-				error instanceof Error ? error.message : "Unexpected server error.",
-				502,
-			)
-		}
-	}
-}
-
-export const openaiCredentials = (
-	options: WebOpenAIOAuthOptions = {},
-): OpenAIOAuth => {
+export const getSession = async (
+	options: BrowserSessionOptions = {},
+): Promise<OpenAIOAuthSession | null> => {
 	const sessionStore = options.sessionStore ?? getDefaultSessionStore()
 	const now = options.now ?? (() => new Date())
 	const shouldRefresh = options.refresh ?? true
 
-	return {
-		kind: "openai-oauth",
-		baseURL: options.baseURL,
-		fetch: options.fetch,
-		headers: options.headers,
-		instructions: options.instructions,
-		openAIBaseURL: options.openAIBaseURL,
-		relay: options.relay ?? defaultRelayBasePath,
-		storeResponses: options.storeResponses,
-		getSession: async () => {
-			const session = await sessionStore.get()
-			if (
-				!session ||
-				!shouldRefresh ||
-				!session.refreshToken ||
-				!shouldRefreshSession(session, now())
-			) {
-				return session
-			}
-
-			const refreshed = await refreshSession(
-				{
-					refreshToken: session.refreshToken,
-				},
-				options,
-			)
-			await sessionStore.set(refreshed)
-			return refreshed
-		},
-		refreshSession: async () => {
-			const session = await sessionStore.get()
-			if (!session?.refreshToken) {
-				return session
-			}
-			const refreshed = await refreshSession(
-				{
-					refreshToken: session.refreshToken,
-				},
-				options,
-			)
-			await sessionStore.set(refreshed)
-			return refreshed
-		},
+	const session = await sessionStore.get()
+	if (
+		!session ||
+		!shouldRefresh ||
+		!session.refreshToken ||
+		!shouldRefreshSession(session, now())
+	) {
+		return session
 	}
+
+	const refreshed = await refreshSession(
+		{
+			refreshToken: session.refreshToken,
+		},
+		options,
+	)
+	await sessionStore.set(refreshed)
+	return refreshed
+}
+
+export const openaiAuthHeaders = async (
+	options: OpenAIAuthHeadersOptions = {},
+): Promise<Headers> => {
+	const session = await getSession(options)
+	if (!session) {
+		if (options.optional) {
+			return new Headers(options.headers)
+		}
+		throw new Error("OpenAI OAuth session not found.")
+	}
+
+	const headers = new Headers(options.headers)
+	headers.set("Authorization", `Bearer ${session.accessToken}`)
+	headers.set("chatgpt-account-id", session.accountId)
+	return headers
 }
 
 const readPendingLogin = (): PendingLogin | undefined => {

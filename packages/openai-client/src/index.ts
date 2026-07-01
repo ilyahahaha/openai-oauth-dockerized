@@ -1,5 +1,4 @@
 import {
-	createOpenAIOAuthRelayTransport,
 	createOpenAIOAuthTransport,
 	type OpenAIOAuth,
 	type OpenAIOAuthTransport,
@@ -28,10 +27,6 @@ const isTransport = (input: OpenAIClientInput): input is OpenAIOAuthTransport =>
 const toTransport = (input: OpenAIClientInput): OpenAIOAuthTransport => {
 	if (isTransport(input)) {
 		return input
-	}
-
-	if (input.relay !== undefined && input.relay !== false) {
-		return createOpenAIOAuthRelayTransport(input)
 	}
 
 	return createOpenAIOAuthTransport({

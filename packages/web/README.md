@@ -2,71 +2,77 @@
 
 [Docs](https://github.com/EvanZhouDev/openai-oauth#react-component) | [GitHub](https://github.com/EvanZhouDev/openai-oauth) | [npm](https://www.npmjs.com/package/@openai-oauth/web)
 
-Framework-neutral browser credentials, encrypted browser storage, and model relay helpers.
+Framework-neutral browser sign-in primitives for OpenAI OAuth.
 
 ```bash
 npm i @openai-oauth/web
 ```
 
-Most React apps should use `@openai-oauth/react`, which depends on this package and re-exports `openaiCredentials()`.
+Most React apps should use `@openai-oauth/react`, which depends on this package and re-exports the common browser helpers.
 
 ```ts
-import { openaiCredentials } from "@openai-oauth/web";
+import { openaiAuthHeaders } from "@openai-oauth/web";
 
-const credentials = openaiCredentials();
+await fetch("/api/chat", {
+	method: "POST",
+	headers: await openaiAuthHeaders(),
+	body: "Hello!",
+});
 ```
 
 ## Package Notes
 
-`@openai-oauth/web` is the lower-level web package. Use it when you need framework-neutral primitives instead of the React button and hook.
+`@openai-oauth/web` is the lower-level web package. Use it when you need browser primitives without React.
 
-### Browser Credentials
-
-```ts
-const credentials = openaiCredentials();
-```
-
-Useful options:
+### Browser Session
 
 ```ts
-type WebOpenAIOAuthOptions = {
-	sessionStore?: SessionStore;
-	clientId?: string;
-	issuer?: string;
-	tokenUrl?: string;
-	fetch?: typeof fetch;
-	baseURL?: string;
-	headers?: Record<string, string>;
-	instructions?: string;
-	openAIBaseURL?: string;
-	relay?: string | false;
-	storeResponses?: boolean;
-	refresh?: boolean;
-	now?: () => Date;
-};
-```
-
-`openaiCredentials()` reads the browser session store and refreshes with the stored refresh token when needed.
-
-`relay` defaults to `/api/openai-oauth`. SDK adapters use that relay for browser model calls.
-
-`openaiCredentials()` returns an `OpenAIOAuth` credential source:
-
-```ts
-type OpenAIOAuth = {
-	kind: "openai-oauth";
-	getSession(): Promise<OpenAIOAuthSession | null>;
-	refreshSession(): Promise<OpenAIOAuthSession | null>;
-};
-```
-
-### Session Store
-
-```ts
-import { createSessionStore } from "@openai-oauth/web";
+import { createSessionStore, getSession, openaiAuthHeaders } from "@openai-oauth/web";
 
 const sessionStore = createSessionStore();
+const session = await getSession({ sessionStore });
+const headers = await openaiAuthHeaders({ sessionStore });
 ```
+
+`getSession()` reads the browser session store and refreshes with the stored refresh token when needed.
+
+`openaiAuthHeaders()` returns request headers for your own app route:
+
+```ts
+const headers = await openaiAuthHeaders({
+	headers: { "content-type": "application/json" },
+});
+```
+
+It includes:
+
+- `Authorization: Bearer <access token>`
+- `chatgpt-account-id: <account id>`
+
+### Server Credentials
+
+Use `@openai-oauth/web/server` in the app route that receives those headers:
+
+```ts
+import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/web/server";
+import { generateText } from "ai";
+
+export async function POST(request: Request) {
+	const openai = createOpenAIOAuth(openaiCredentials(request));
+
+	const result = await generateText({
+		model: openai("gpt-5.4-mini"),
+		prompt: await request.text(),
+	});
+
+	return new Response(result.text);
+}
+```
+
+`openaiCredentials(request)` reads the request headers and returns an `OpenAIOAuth` credential source for client adapters.
+
+### Session Store
 
 The default store persists the session in IndexedDB and encrypts each payload with a non-extractable WebCrypto AES-GCM key.
 
@@ -78,34 +84,6 @@ type SessionStore = {
 	set(session: OpenAIOAuthSession): Promise<void>;
 	clear(): Promise<void>;
 };
-```
-
-### Model Relay
-
-```ts
-import { createRelayHandler } from "@openai-oauth/web";
-
-const handler = createRelayHandler();
-```
-
-The relay reads `Authorization` and `chatgpt-account-id` from the browser request, forwards the model call to ChatGPT/Codex, and does not store credentials.
-
-Useful options:
-
-```ts
-type RelayHandlerOptions = {
-	basePath?: string;
-	fetch?: typeof fetch;
-	headers?: Record<string, string>;
-	instructions?: string;
-	storeResponses?: boolean;
-};
-```
-
-The relay handler has this shape:
-
-```ts
-type OpenAIOAuthHandler = (request: Request) => Promise<Response>;
 ```
 
 ### Direct Token Exchange
@@ -122,6 +100,43 @@ const session = await exchangeCode({
 const refreshed = await refreshSession({
 	refreshToken: session.refreshToken,
 });
+```
+
+### Login Helpers
+
+```ts
+import { completeLogin, logout, startLogin } from "@openai-oauth/web";
+
+await startLogin();
+await completeLogin();
+await logout();
+```
+
+Useful browser options:
+
+```ts
+type BrowserSessionOptions = {
+	sessionStore?: SessionStore;
+	clientId?: string;
+	issuer?: string;
+	tokenUrl?: string;
+	fetch?: typeof fetch;
+	refresh?: boolean;
+	now?: () => Date;
+};
+```
+
+Useful server options:
+
+```ts
+type WebServerOpenAIOAuthOptions = {
+	baseURL?: string;
+	fetch?: typeof fetch;
+	headers?: Record<string, string>;
+	instructions?: string;
+	openAIBaseURL?: string;
+	storeResponses?: boolean;
+};
 ```
 
 ## More

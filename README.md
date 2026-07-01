@@ -67,33 +67,55 @@ npm i @openai-oauth/react @openai-oauth/ai-sdk ai
 
 Quickstart for Next.js:
 
-```ts
-// app/api/openai-oauth/[...openai]/route.ts
-
-export { GET, POST, OPTIONS } from "@openai-oauth/react/next";
-```
-
 ```tsx
+// app/page.tsx
 "use client";
 
-import { SignInWithChatGPT } from "@openai-oauth/react";
+import { openaiAuthHeaders, SignInWithChatGPT } from "@openai-oauth/react";
+import { useState } from "react";
 
 export default function Page() {
-	return <SignInWithChatGPT />;
+	const [text, setText] = useState("");
+
+	async function ask() {
+		const response = await fetch("/api/chat", {
+			method: "POST",
+			headers: await openaiAuthHeaders({
+				headers: { "content-type": "application/json" },
+			}),
+			body: JSON.stringify({ prompt: "Hello!" }),
+		});
+
+		setText(await response.text());
+	}
+
+	return (
+		<>
+			<SignInWithChatGPT />
+			<button onClick={ask}>Ask</button>
+			<p>{text}</p>
+		</>
+	);
 }
 ```
 
 ```ts
+// app/api/chat/route.ts
 import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
-import { openaiCredentials } from "@openai-oauth/react";
+import { openaiCredentials } from "@openai-oauth/react/server";
 import { generateText } from "ai";
 
-const openai = createOpenAIOAuth(openaiCredentials());
+export async function POST(request: Request) {
+	const { prompt } = await request.json();
+	const openai = createOpenAIOAuth(openaiCredentials(request));
 
-const result = await generateText({
-	model: openai("gpt-5.4-mini"),
-	prompt: "Hello!",
-});
+	const result = await generateText({
+		model: openai("gpt-5.4-mini"),
+		prompt,
+	});
+
+	return new Response(result.text);
+}
 ```
 
 Works with any web framework and OpenAI-compatible client. [Learn more](#react-component)
@@ -276,12 +298,12 @@ const credentials = openaiCredentials({
 npm i @openai-oauth/react
 ```
 
-Use credentials from the user's browser, with **Sign in with ChatGPT**.
+Use request-bound credentials from the user's browser, with **Sign in with ChatGPT**.
 
 ```ts
-import { openaiCredentials } from "@openai-oauth/web";
+import { openaiCredentials } from "@openai-oauth/web/server";
 
-const credentials = openaiCredentials();
+const credentials = openaiCredentials(request);
 ```
 
 In order to actually establish the credentials in the user's browser, you can use `openai-oauth`'s built-in **Sign in with ChatGPT** SDK, [documented below](#sign-in-with-chatgpt-setup).
@@ -291,7 +313,7 @@ For framework neutral usage, see documentation for `@openai-oauth/web` in `packa
 ### How are web credentials stored?
 
 Your OpenAI credentials are by default stored on your device in IndexedDB and encrypted at rest with WebCrypto.
-The server relay required does not store credentials.
+Your app server receives request-bound credentials only when the browser sends them with `openaiAuthHeaders()`.
 
 `openai-oauth` lets you bring your own credential storage solution if this is not good enough. See documentation for `@openai-oauth/web` in `packages/web` for more information.
 
@@ -308,10 +330,8 @@ npm i openai @openai-oauth/ai-sdk
 Connect `openai-oauth` to Vercel AI SDK with this provider.
 
 ```ts
-// Any Credential Source
-import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
-
 import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/local";
 import { generateText } from "ai";
 
 const openai = createOpenAIOAuth(openaiCredentials());
@@ -334,10 +354,8 @@ npm i openai @openai-oauth/openai-client
 OpenAI JavaScript SDK options adapter.
 
 ```ts
-// Any Credential Source
-import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
-
 import { createOpenAIOptions } from "@openai-oauth/openai-client";
+import { openaiCredentials } from "@openai-oauth/local";
 import OpenAI from "openai";
 
 const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
@@ -393,21 +411,35 @@ export default function Page() {
 
 The button handles the full browser sign-in flow. After sign-in, it becomes a disconnect button.
 
-To call the model, you will need a server relay due to CORS. `openai-oauth` has an out-of-the-box solution for Next.js.
+Due to CORS, you will need a server relay to call the actual AI API. One way to do this is to send the browser session to your own app route:
 
 ```ts
-// app/api/openai-oauth/[...openai]/route.ts
+import { openaiAuthHeaders } from "@openai-oauth/react";
 
-export { GET, POST, OPTIONS } from "@openai-oauth/react/next";
+await fetch("/api/chat", {
+	method: "POST",
+	headers: await openaiAuthHeaders(),
+	body: "Hello!",
+});
 ```
 
-Then use the browser credential source with the `@openai-oauth/react` client adapter:
+Then read request-bound credentials on the server:
 
 ```ts
 import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
-import { openaiCredentials } from "@openai-oauth/react";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import { generateText } from "ai";
 
-const openai = createOpenAIOAuth(openaiCredentials());
+export async function POST(request: Request) {
+	const openai = createOpenAIOAuth(openaiCredentials(request));
+
+	const result = await generateText({
+		model: openai("gpt-5.4-mini"),
+		prompt: await request.text(),
+	});
+
+	return new Response(result.text);
+}
 ```
 
 Useful props:

@@ -25,9 +25,27 @@ const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
 It works with any credential source:
 
 ```ts
-import { openaiCredentials } from "@openai-oauth/react"; // or "@openai-oauth/local"
+import { openaiCredentials } from "@openai-oauth/local";
 
 const client = new OpenAI(createOpenAIOptions(openaiCredentials()));
+```
+
+For web apps, create the client inside your own server route with request-bound credentials:
+
+```ts
+import { createOpenAIOptions } from "@openai-oauth/openai-client";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import OpenAI from "openai";
+
+export async function POST(request: Request) {
+	const client = new OpenAI(createOpenAIOptions(openaiCredentials(request)));
+	const response = await client.responses.create({
+		model: "gpt-5.4-mini",
+		input: await request.text(),
+	});
+
+	return Response.json(response);
+}
 ```
 
 The default `apiKey` is the placeholder string `openai-oauth`. Authentication is handled by the custom `fetch` implementation.

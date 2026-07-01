@@ -3,35 +3,32 @@ import { describe, expect, test, vi } from "vitest"
 import { createOpenAIOAuth } from "../src/index.js"
 
 describe("createOpenAIOAuth", () => {
-	test("uses the relay JSON responses path for browser generateText calls", async () => {
-		const fetch = vi.fn(async () =>
-			Response.json({
-				id: "resp_1",
-				created_at: 1_735_689_600,
-				model: "gpt-5.4-mini",
-				output: [
+	test("uses request-bound OAuth credentials for generateText calls", async () => {
+		const fetch = vi.fn(
+			async () =>
+				new Response(
+					[
+						"event: response.created",
+						'data: {"type":"response.created","response":{"id":"resp_1","model":"gpt-5.4-mini","created_at":1735689600}}',
+						"",
+						"event: response.output_text.delta",
+						'data: {"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"hello"}',
+						"",
+						"event: response.output_text.done",
+						'data: {"type":"response.output_text.done","item_id":"msg_1","output_index":0,"content_index":0,"text":"hello"}',
+						"",
+						"event: response.completed",
+						'data: {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.4-mini","created_at":1735689600,"status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}}',
+						"",
+						"",
+					].join("\n"),
 					{
-						type: "message",
-						role: "assistant",
-						id: "msg_1",
-						content: [
-							{
-								type: "output_text",
-								text: "hello",
-								annotations: [],
-							},
-						],
+						headers: { "Content-Type": "text/event-stream" },
 					},
-				],
-				usage: {
-					input_tokens: 1,
-					output_tokens: 1,
-				},
-			}),
+				),
 		)
 		const openai = createOpenAIOAuth({
 			kind: "openai-oauth",
-			relay: "/api/openai-oauth",
 			fetch,
 			getSession: async () => ({
 				accessToken: "access-token",
@@ -55,9 +52,10 @@ describe("createOpenAIOAuth", () => {
 		const headers = new Headers(init?.headers)
 		const body = JSON.parse(String(init?.body))
 
-		expect(url).toBe("/api/openai-oauth/responses")
+		expect(url).toBe("https://chatgpt.com/backend-api/codex/responses")
 		expect(headers.get("authorization")).toBe("Bearer access-token")
 		expect(headers.get("chatgpt-account-id")).toBe("acct-1")
-		expect(body.stream).toBeUndefined()
+		expect(body.stream).toBe(true)
+		expect(body.store).toBe(false)
 	})
 })

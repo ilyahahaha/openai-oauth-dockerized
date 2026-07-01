@@ -5,10 +5,7 @@ import {
 	createOpenAIOAuthTransport,
 	normalizeCodexResponsesBody,
 } from "../src/index.js"
-import {
-	createOpenAIOAuthRelayTransport,
-	createOpenAIOAuthTransport as createRuntimeOpenAIOAuthTransport,
-} from "../src/runtime.js"
+import { createOpenAIOAuthTransport as createRuntimeOpenAIOAuthTransport } from "../src/runtime.js"
 
 const session = {
 	accessToken: "access-token",
@@ -85,33 +82,6 @@ describe("normalizeCodexResponsesBody", () => {
 })
 
 describe("createCodexOAuthFetch", () => {
-	test("creates a same-origin relay connection from a credential source", async () => {
-		const fetch = vi.fn(async () => new Response(null, { status: 200 }))
-		const connection = createOpenAIOAuthRelayTransport(
-			{
-				kind: "openai-oauth",
-				relay: "/api/openai-oauth",
-				getSession: async () => session,
-				refreshSession: async () => session,
-			},
-			{ fetch },
-		)
-
-		expect(connection.baseURL).toBe("/api/openai-oauth/v1")
-
-		await connection.request("/responses", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ model: "gpt-5.4-mini", input: "hi" }),
-		})
-
-		const [url, init] = fetch.mock.calls[0] ?? []
-		const headers = new Headers(init?.headers)
-		expect(url).toBe("/api/openai-oauth/responses")
-		expect(headers.get("authorization")).toBe("Bearer access-token")
-		expect(headers.get("chatgpt-account-id")).toBe("acct-1")
-	})
-
 	test("creates an in-memory OpenAI-compatible connection", async () => {
 		const fetch = vi.fn(async () => new Response(null, { status: 200 }))
 		const connection = createOpenAIOAuthTransport({

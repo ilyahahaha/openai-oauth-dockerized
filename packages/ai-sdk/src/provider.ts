@@ -12,7 +12,6 @@ import {
 } from "@ai-sdk/provider"
 import { type FetchFunction, withUserAgentSuffix } from "@ai-sdk/provider-utils"
 import {
-	createOpenAIOAuthRelayTransport,
 	createOpenAIOAuthTransport,
 	type OpenAIOAuth,
 	type OpenAIOAuthTransport,
@@ -285,47 +284,27 @@ const isTransport = (
 	input: OpenAIOAuthProviderInput,
 ): input is OpenAIOAuthTransport => input.kind === "openai-compatible"
 
-type ResolvedProviderTransport = {
-	transport: OpenAIOAuthTransport
-	generateMode: GenerateMode
-}
-
-const toTransport = (
-	input: OpenAIOAuthProviderInput,
-): ResolvedProviderTransport => {
+const toTransport = (input: OpenAIOAuthProviderInput): OpenAIOAuthTransport => {
 	if (isTransport(input)) {
-		return {
-			transport: input,
-			generateMode: "stream",
-		}
+		return input
 	}
 
-	if (input.relay !== undefined && input.relay !== false) {
-		return {
-			transport: createOpenAIOAuthRelayTransport(input),
-			generateMode: "response",
-		}
-	}
-
-	return {
-		transport: createOpenAIOAuthTransport({
-			auth: () => input.getSession(),
-			baseURL: input.baseURL,
-			fetch: input.fetch,
-			headers: input.headers,
-			instructions: input.instructions,
-			openAIBaseURL: input.openAIBaseURL,
-			storeResponses: input.storeResponses,
-		}),
-		generateMode: "stream",
-	}
+	return createOpenAIOAuthTransport({
+		auth: () => input.getSession(),
+		baseURL: input.baseURL,
+		fetch: input.fetch,
+		headers: input.headers,
+		instructions: input.instructions,
+		openAIBaseURL: input.openAIBaseURL,
+		storeResponses: input.storeResponses,
+	})
 }
 
 export const createOpenAIOAuth = (
 	input: OpenAIOAuthProviderInput,
 	settings: OpenAIOAuthProviderSettings = {},
 ): OpenAIOAuthProvider => {
-	const { transport, generateMode } = toTransport(input)
+	const transport = toTransport(input)
 	const baseURL = transport.baseURL
 	const providerName = settings.name ?? "openai"
 	const oauthFetch = transport.fetch
@@ -339,7 +318,7 @@ export const createOpenAIOAuth = (
 	}
 
 	const createModel = (modelId: OpenAIOAuthModelId) =>
-		new CodexResponsesLanguageModel(modelId, config, { generateMode })
+		new CodexResponsesLanguageModel(modelId, config)
 
 	const providerFn = (modelId: OpenAIOAuthModelId) => createModel(modelId)
 	const specificationVersion: ProviderV3["specificationVersion"] = "v3"

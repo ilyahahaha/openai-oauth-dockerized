@@ -46,7 +46,6 @@ export type OpenAIOAuth = {
 	headers?: Record<string, string>
 	instructions?: string
 	openAIBaseURL?: string
-	relay?: string | false
 	storeResponses?: boolean
 }
 
@@ -732,103 +731,6 @@ export const createOpenAIOAuthTransport = (
 		fetch,
 		request: (path, init) =>
 			fetch(resolveOpenAICompatibleUrl(path, baseURL), init),
-		capabilities: {
-			responses: true,
-			chatCompletions: true,
-			models: true,
-			streaming: true,
-		},
-	}
-}
-
-const DEFAULT_OPENAI_OAUTH_RELAY = "/api/openai-oauth"
-
-const resolveRelayBaseURL = (relay: string | undefined): string =>
-	trimTrailingSlash(relay ?? DEFAULT_OPENAI_OAUTH_RELAY)
-
-const resolveOpenAICompatibleRelayURL = (
-	path: string,
-	baseURL: string,
-): string => {
-	if (/^https?:\/\//.test(baseURL)) {
-		return new URL(path.replace(/^\//, ""), `${baseURL}/`).toString()
-	}
-
-	return `${trimTrailingSlash(baseURL)}/${path.replace(/^\//, "")}`
-}
-
-const resolveRelayRequestURL = (inputUrl: string, relay: string): string => {
-	const parsed = /^https?:\/\//.test(inputUrl)
-		? new URL(inputUrl)
-		: new URL(inputUrl, "https://openai-oauth.invalid")
-	const relayBase = resolveRelayBaseURL(relay)
-	const relayPath = /^https?:\/\//.test(relayBase)
-		? new URL(relayBase).pathname
-		: new URL(relayBase, "https://openai-oauth.invalid").pathname
-	let pathname = parsed.pathname
-
-	if (pathname === relayPath) {
-		pathname = "/"
-	} else if (relayPath !== "/" && pathname.startsWith(`${relayPath}/`)) {
-		pathname = pathname.slice(relayPath.length)
-	}
-
-	if (pathname === "/v1") {
-		pathname = "/"
-	} else if (pathname.startsWith("/v1/")) {
-		pathname = pathname.slice(3)
-	}
-
-	return `${relayBase}${pathname}${parsed.search}`
-}
-
-export const createOpenAIOAuthRelayTransport = (
-	credentials: OpenAIOAuth,
-	options: {
-		relay?: string
-		fetch?: FetchFunction
-	} = {},
-): OpenAIOAuthTransport => {
-	const configuredRelay =
-		options.relay ??
-		(credentials.relay === false ? undefined : credentials.relay)
-	const relay = resolveRelayBaseURL(configuredRelay)
-	const fetch = pickFetch(options.fetch ?? credentials.fetch)
-	const baseURL = resolveOpenAICompatibleRelayURL(
-		"/v1",
-		credentials.openAIBaseURL ?? relay,
-	)
-	const relayFetch: FetchFunction = async (input, init) => {
-		const request = await readRequestParts(input, init)
-		const session = await credentials.getSession()
-		if (!session) {
-			throw new Error("OpenAI OAuth session not found.")
-		}
-
-		const headers = new Headers(credentials.headers)
-		request.headers.forEach((value, key) => {
-			headers.set(key, value)
-		})
-		headers.delete("authorization")
-		headers.delete("chatgpt-account-id")
-		headers.set("Authorization", `Bearer ${session.accessToken}`)
-		headers.set("chatgpt-account-id", session.accountId)
-
-		return fetch(resolveRelayRequestURL(request.url, relay), {
-			method: request.method ?? init?.method,
-			headers,
-			body: request.body,
-			signal: request.signal ?? undefined,
-		})
-	}
-
-	return {
-		kind: "openai-compatible",
-		provider: "chatgpt-codex",
-		baseURL,
-		fetch: relayFetch,
-		request: (path, init) =>
-			relayFetch(resolveOpenAICompatibleRelayURL(path, baseURL), init),
 		capabilities: {
 			responses: true,
 			chatCompletions: true,

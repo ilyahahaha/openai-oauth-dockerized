@@ -1,27 +1,19 @@
 "use client"
 
-import { createOpenAIOAuth } from "@openai-oauth/ai-sdk"
+import { useCompletion } from "@ai-sdk/react"
 import {
-	openaiCredentials,
+	openaiAuthHeaders,
 	SignInWithChatGPT,
 	type SignInWithChatGPTState,
 } from "@openai-oauth/react"
-import { generateText } from "ai"
 import Image from "next/image"
 import { type CSSProperties, useState } from "react"
 
-type RequestState = {
-	status: "idle" | "requesting" | "success" | "error"
-	text: string | null
-	error: string | null
-}
-
 type DemoMode = "sign-in" | "local-api"
-type SignInCodeTab = "app" | "route"
+type RequestCodeTab = "app" | "route"
 
 const requestModel = "gpt-5.4-mini"
 const maxResponseLines = 10
-const openai = createOpenAIOAuth(openaiCredentials())
 
 const initialAuthState: SignInWithChatGPTState = {
 	status: "checking",
@@ -29,38 +21,49 @@ const initialAuthState: SignInWithChatGPTState = {
 	error: null,
 }
 
-const initialRequestState: RequestState = {
-	status: "idle",
-	text: null,
-	error: null,
-}
-
-const signInCode = {
-	app: `"use client";
+const signInCode = `"use client";
 
 import { SignInWithChatGPT } from "@openai-oauth/react";
 
 export default function App() {
   return <SignInWithChatGPT />;
+}`
+
+const requestCode = {
+	app: `"use client";
+
+import { useCompletion } from "@ai-sdk/react";
+import { openaiAuthHeaders } from "@openai-oauth/react";
+
+const { completion, complete } = useCompletion({
+  api: "/api/chat",
+  streamProtocol: "text",
+});
+
+await complete("Hello!", {
+  headers: await openaiAuthHeaders(),
+});`,
+	route: `import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import { streamText } from "ai";
+
+export async function POST(request: Request) {
+  const { prompt } = await request.json();
+  const openai = createOpenAIOAuth(openaiCredentials(request));
+
+  const result = streamText({
+    model: openai("gpt-5.4-mini"),
+    prompt,
+  });
+
+  return result.toTextStreamResponse();
 }`,
-	route: `export { GET, POST, OPTIONS } from "@openai-oauth/react/next";`,
-} satisfies Record<SignInCodeTab, string>
-
-const requestCode = `import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
-import { openaiCredentials } from "@openai-oauth/react";
-import { generateText } from "ai";
-
-const openai = createOpenAIOAuth(openaiCredentials());
-
-const result = await generateText({
-  model: openai("gpt-5.4-mini"),
-  prompt: "Hello!",
-});`
+} satisfies Record<RequestCodeTab, string>
 
 const localApiCommand = `npx openai-oauth`
 
-const signInCodeLineCount = Math.max(
-	...Object.values(signInCode).map((code) => code.split("\n").length),
+const requestCodeLineCount = Math.max(
+	...Object.values(requestCode).map((code) => code.split("\n").length),
 )
 
 function truncateResponse(text: string) {
@@ -206,9 +209,9 @@ function CodeBlock({
 }: {
 	code: string
 	minLines?: number
-	tabs?: Array<{ id: SignInCodeTab; label: string }>
-	activeTab?: SignInCodeTab
-	onTabChange?: (tab: SignInCodeTab) => void
+	tabs?: Array<{ id: RequestCodeTab; label: string }>
+	activeTab?: RequestCodeTab
+	onTabChange?: (tab: RequestCodeTab) => void
 }) {
 	const [hasCopied, setHasCopied] = useState(false)
 
@@ -265,21 +268,30 @@ function CodeBlock({
 export function LoginPanel() {
 	const [authState, setAuthState] =
 		useState<SignInWithChatGPTState>(initialAuthState)
-	const [requestState, setRequestState] =
-		useState<RequestState>(initialRequestState)
 	const [prompt, setPrompt] = useState("")
-	const [activeSignInTab, setActiveSignInTab] = useState<SignInCodeTab>("app")
+	const [activeRequestTab, setActiveRequestTab] =
+		useState<RequestCodeTab>("app")
 	const [activeMode, setActiveMode] = useState<DemoMode>("sign-in")
 	const [hasCopiedLocalCommand, setHasCopiedLocalCommand] = useState(false)
+	const {
+		complete,
+		completion,
+		error: completionError,
+		isLoading,
+		setCompletion,
+	} = useCompletion({
+		api: "/api/chat",
+		streamProtocol: "text",
+	})
 
 	const isSignedIn = authState.status === "signed-in"
-	const isRequesting = requestState.status === "requesting"
+	const isRequesting = isLoading
 	const canRequest = isSignedIn && !isRequesting && prompt.trim().length > 0
 
 	const handleAuthStateChange = (next: SignInWithChatGPTState) => {
 		setAuthState(next)
 		if (next.status !== "signed-in") {
-			setRequestState(initialRequestState)
+			setCompletion("")
 		}
 	}
 
@@ -289,32 +301,12 @@ export function LoginPanel() {
 			return
 		}
 
-		setRequestState((current) => ({
-			status: "requesting",
-			text: current.text,
-			error: null,
-		}))
-
 		try {
-			const result = await generateText({
-				model: openai(requestModel),
-				prompt: input,
-			})
-
-			setRequestState({
-				status: "success",
-				text: result.text,
-				error: null,
+			await complete(input, {
+				headers: await openaiAuthHeaders(),
 			})
 		} catch (error) {
-			setRequestState((current) => ({
-				status: "error",
-				text: current.text,
-				error:
-					error instanceof Error
-						? error.message
-						: "The request failed unexpectedly.",
-			}))
+			console.error(error)
 		}
 	}
 
@@ -381,19 +373,7 @@ export function LoginPanel() {
 									<p>Let users connect their ChatGPT account.</p>
 								</div>
 							</div>
-							<CodeBlock
-								activeTab={activeSignInTab}
-								code={signInCode[activeSignInTab]}
-								minLines={signInCodeLineCount}
-								onTabChange={setActiveSignInTab}
-								tabs={[
-									{ id: "app", label: "app.tsx" },
-									{
-										id: "route",
-										label: "app/api/openai-oauth/[...openai]/route.ts",
-									},
-								]}
-							/>
+							<CodeBlock code={signInCode} />
 						</section>
 
 						<section className="stepOutput signInOutput">
@@ -432,7 +412,16 @@ export function LoginPanel() {
 									<p>Use the AI SDK with the signed-in account.</p>
 								</div>
 							</div>
-							<CodeBlock code={requestCode} />
+							<CodeBlock
+								activeTab={activeRequestTab}
+								code={requestCode[activeRequestTab]}
+								minLines={requestCodeLineCount}
+								onTabChange={setActiveRequestTab}
+								tabs={[
+									{ id: "app", label: "app.tsx" },
+									{ id: "route", label: "app/api/chat/route.ts" },
+								]}
+							/>
 						</section>
 
 						<section className="stepOutput requestOutput">
@@ -458,19 +447,19 @@ export function LoginPanel() {
 								</button>
 							</form>
 
-							{requestState.status === "requesting" ? (
+							{isRequesting ? (
 								<p className="statusText">Asking {requestModel}...</p>
 							) : null}
 
-							{requestState.text ? (
+							{completion ? (
 								<output className="responseText">
-									{truncateResponse(requestState.text)}
+									{truncateResponse(completion)}
 								</output>
 							) : null}
 
-							{requestState.status === "error" && requestState.error ? (
+							{completionError ? (
 								<p className="errorText" role="alert">
-									{requestState.error}
+									{completionError.message}
 								</p>
 							) : null}
 						</section>

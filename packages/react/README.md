@@ -26,20 +26,44 @@ export default function Page() {
 
 No app route is required for login. The hook creates the authorization URL, stores PKCE/state in `sessionStorage`, exchanges the callback code directly, and stores the resulting session in the browser session store.
 
-Browser model calls need a same-origin relay because ChatGPT blocks direct browser CORS. For Next App Router:
+Browser model calls must go through your own app route because ChatGPT does not allow direct browser CORS requests. Send the signed-in session to that route with `openaiAuthHeaders()`:
 
-```ts
-// app/api/openai-oauth/[...openai]/route.ts
-export { GET, POST, OPTIONS } from "@openai-oauth/react/next";
+```tsx
+"use client";
+
+import { openaiAuthHeaders, SignInWithChatGPT } from "@openai-oauth/react";
+
+async function ask() {
+	const response = await fetch("/api/chat", {
+		method: "POST",
+		headers: await openaiAuthHeaders({
+			headers: { "content-type": "application/json" },
+		}),
+		body: JSON.stringify({ prompt: "Hello!" }),
+	});
+
+	return response.text();
+}
 ```
 
-Use browser credentials with a client adapter:
+Read the request-bound credentials on your server:
 
 ```ts
 import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
-import { openaiCredentials } from "@openai-oauth/react";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import { generateText } from "ai";
 
-const openai = createOpenAIOAuth(openaiCredentials());
+export async function POST(request: Request) {
+	const { prompt } = await request.json();
+	const openai = createOpenAIOAuth(openaiCredentials(request));
+
+	const result = await generateText({
+		model: openai("gpt-5.4-mini"),
+		prompt,
+	});
+
+	return Response.json({ text: result.text });
+}
 ```
 
 Useful props:
@@ -102,15 +126,14 @@ type SessionStore = {
 };
 ```
 
-`openaiCredentials()` defaults to the relay path `/api/openai-oauth`. Use `openaiCredentials({ relay: "/api/custom" })` if you mount the relay elsewhere.
-
 Exports:
 
 - `SignInWithChatGPT`
 - `useSignInWithChatGPT`
-- `openaiCredentials`
+- `openaiAuthHeaders`
+- `getSession`
 - `createSessionStore`
-- `GET`, `POST`, `OPTIONS` from `@openai-oauth/react/next`
+- `openaiCredentials` from `@openai-oauth/react/server`
 
 ## More
 
