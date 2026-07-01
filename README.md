@@ -62,7 +62,7 @@ Let your users sign in with their ChatGPT accounts.
 <img src="/assets/sign-in-with-chatgpt-button.png" alt="Sign in with ChatGPT" width="320" />
 
 ```bash
-npm i @openai-oauth/react @openai-oauth/ai-sdk ai
+npm i @openai-oauth/react @openai-oauth/ai-sdk ai @ai-sdk/react
 ```
 
 Quickstart for Next.js:
@@ -72,28 +72,28 @@ Quickstart for Next.js:
 "use client";
 
 import { openaiAuthHeaders, SignInWithChatGPT } from "@openai-oauth/react";
-import { useState } from "react";
+import { useCompletion } from "@ai-sdk/react";
 
 export default function Page() {
-	const [text, setText] = useState("");
-
-	async function ask() {
-		const response = await fetch("/api/chat", {
-			method: "POST",
-			headers: await openaiAuthHeaders({
-				headers: { "content-type": "application/json" },
-			}),
-			body: JSON.stringify({ prompt: "Hello!" }),
-		});
-
-		setText(await response.text());
-	}
+	const { complete, completion, isLoading } = useCompletion({
+		api: "/api/chat",
+		streamProtocol: "text",
+	});
 
 	return (
 		<>
 			<SignInWithChatGPT />
-			<button onClick={ask}>Ask</button>
-			<p>{text}</p>
+			<button
+				disabled={isLoading}
+				onClick={async () => {
+					await complete("Hello!", {
+						headers: await openaiAuthHeaders(),
+					});
+				}}
+			>
+				Ask
+			</button>
+			<p>{completion}</p>
 		</>
 	);
 }
@@ -103,18 +103,18 @@ export default function Page() {
 // app/api/chat/route.ts
 import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
 import { openaiCredentials } from "@openai-oauth/react/server";
-import { generateText } from "ai";
+import { streamText } from "ai";
 
 export async function POST(request: Request) {
 	const { prompt } = await request.json();
 	const openai = createOpenAIOAuth(openaiCredentials(request));
 
-	const result = await generateText({
+	const result = streamText({
 		model: openai("gpt-5.4-mini"),
 		prompt,
 	});
 
-	return new Response(result.text);
+	return result.toTextStreamResponse();
 }
 ```
 
