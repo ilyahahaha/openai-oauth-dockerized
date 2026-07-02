@@ -48,6 +48,8 @@ async function ask() {
 }
 ```
 
+`openaiAuthHeaders()` returns a plain object, so it can be passed directly to `fetch`, AI SDK hooks, and other code that spreads header objects.
+
 Read the request-bound credentials on your server:
 
 ```ts

@@ -60,6 +60,8 @@ export type OpenAIAuthHeadersOptions = BrowserSessionOptions & {
 	optional?: boolean
 }
 
+export type OpenAIAuthHeaders = Record<string, string>
+
 export type StartLoginOptions = Omit<
 	OpenAIOAuthRequestOptions,
 	"redirectUri"
@@ -488,11 +490,11 @@ export const getSession = async (
 
 export const openaiAuthHeaders = async (
 	options: OpenAIAuthHeadersOptions = {},
-): Promise<Headers> => {
+): Promise<OpenAIAuthHeaders> => {
 	const session = await getSession(options)
 	if (!session) {
 		if (options.optional) {
-			return new Headers(options.headers)
+			return toPlainHeaders(new Headers(options.headers))
 		}
 		throw new Error("OpenAI OAuth session not found.")
 	}
@@ -500,7 +502,15 @@ export const openaiAuthHeaders = async (
 	const headers = new Headers(options.headers)
 	headers.set("Authorization", `Bearer ${session.accessToken}`)
 	headers.set("chatgpt-account-id", session.accountId)
-	return headers
+	return toPlainHeaders(headers)
+}
+
+const toPlainHeaders = (headers: Headers): OpenAIAuthHeaders => {
+	const output: OpenAIAuthHeaders = {}
+	headers.forEach((value, key) => {
+		output[key] = value
+	})
+	return output
 }
 
 const readPendingLogin = (): PendingLogin | undefined => {

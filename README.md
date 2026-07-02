@@ -316,6 +316,8 @@ import { openaiCredentials } from "@openai-oauth/web/server";
 const credentials = openaiCredentials(request);
 ```
 
+`openaiAuthHeaders()` returns a plain header object, so it works with both `fetch` and AI SDK hooks like `useCompletion`.
+
 In order to actually establish the credentials in the user's browser, you can use `openai-oauth`'s built-in **Sign in with ChatGPT** SDK, [documented below](#sign-in-with-chatgpt-setup).
 
 For framework neutral usage, see documentation for `@openai-oauth/web` in `packages/web`.
@@ -323,7 +325,7 @@ For framework neutral usage, see documentation for `@openai-oauth/web` in `packa
 ### How are web credentials stored?
 
 Your OpenAI credentials are by default stored on your device in IndexedDB and encrypted at rest with WebCrypto.
-Your app server receives request-bound credentials only when the browser sends them with `openaiAuthHeaders()`.
+Your app server receives request-bound credentials only when the browser sends them with `openaiAuthHeaders()`, which returns a plain header object.
 
 `openai-oauth` lets you bring your own credential storage solution if this is not good enough. See documentation for `@openai-oauth/web` in `packages/web` for more information.
 
@@ -434,6 +436,8 @@ await fetch("/api/chat", {
 	body: "Hello!",
 });
 ```
+
+`openaiAuthHeaders()` returns a plain object, so it can be passed directly to `fetch`, AI SDK hooks, and other code that spreads header objects.
 
 Then read request-bound credentials on the server:
 

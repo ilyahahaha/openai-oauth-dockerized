@@ -62,7 +62,7 @@ describe("@openai-oauth/web", () => {
 		expect(replaceState).toHaveBeenCalledWith(null, "", "/")
 	})
 
-	test("openaiAuthHeaders refreshes expiring stored browser sessions", async () => {
+	test("openaiAuthHeaders returns plain object headers and refreshes expiring stored browser sessions", async () => {
 		const accessToken = createToken("acct_refreshed")
 		const stored = {
 			accessToken: createToken("acct_old"),
@@ -89,14 +89,22 @@ describe("@openai-oauth/web", () => {
 			)
 		})
 		const headers = await openaiAuthHeaders({
+			headers: { "content-type": "application/json" },
 			sessionStore,
 			fetch,
 			now: () => new Date("2026-01-01T00:00:00.000Z"),
 			tokenUrl: "https://auth.example.test/oauth/token",
 		})
 
-		expect(headers.get("authorization")).toBe(`Bearer ${accessToken}`)
-		expect(headers.get("chatgpt-account-id")).toBe("acct_refreshed")
+		expect(headers).toMatchObject({
+			authorization: `Bearer ${accessToken}`,
+			"chatgpt-account-id": "acct_refreshed",
+			"content-type": "application/json",
+		})
+		expect({ ...headers }).toMatchObject({
+			authorization: `Bearer ${accessToken}`,
+			"chatgpt-account-id": "acct_refreshed",
+		})
 		expect(sessionStore.set).toHaveBeenCalledWith({
 			accessToken,
 			accountId: "acct_refreshed",

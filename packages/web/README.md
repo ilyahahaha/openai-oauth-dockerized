@@ -36,13 +36,15 @@ const headers = await openaiAuthHeaders({ sessionStore });
 
 `getSession()` reads the browser session store and refreshes with the stored refresh token when needed.
 
-`openaiAuthHeaders()` returns request headers for your own app route:
+`openaiAuthHeaders()` returns a plain object of request headers for your own app route:
 
 ```ts
 const headers = await openaiAuthHeaders({
 	headers: { "content-type": "application/json" },
 });
 ```
+
+Because it returns a plain object, the result can be passed directly to `fetch`, AI SDK hooks, and other code that spreads header objects.
 
 It includes:
 

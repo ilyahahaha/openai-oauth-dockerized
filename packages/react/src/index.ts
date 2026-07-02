@@ -3,6 +3,7 @@ export {
 	type BrowserSessionStoreOptions,
 	createSessionStore,
 	getSession,
+	type OpenAIAuthHeaders,
 	type OpenAIAuthHeadersOptions,
 	openaiAuthHeaders,
 } from "@openai-oauth/web"
