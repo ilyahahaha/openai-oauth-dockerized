@@ -14,7 +14,8 @@
 > ### What's new in v2?
 >
 > - [**Sign in with ChatGPT**](#react-component): Let your users sign in with their ChatGPT accounts in React
-> - [**Generalized Client Support**](#client-adapters): Use with OpenAI Client, AI SDK, or any other OpenAI-Compatible client
+> - [**Credential Sources**](#sdk-overview): Get credentials from user sign-in, locally, or somewhere else
+> - [**Client Adapters**](#client-adapters): Use those credentials with Vercel AI SDK, OpenAI Client, or any OpenAI-compatible client
 > - [**CLI Login**](#openai-oauth-cli): You can now login via `npx openai-oauth`
 > - [**Cleaner Package Architecture**](#sdk-overview): Separate packages for CLI, credentials, clients, and more
 
@@ -356,6 +357,15 @@ const result = await generateText({
 
 [Learn more](https://ai-sdk.dev/) about how to use Vercel AI SDK.
 See supported features [above](#what-is-supported).
+
+<details>
+<summary>Migrating from <code>openai-oauth-provider</code></summary>
+
+Vercel AI SDK integration is now independent of your credential source. `openai-oauth-provider` will soon be deprecated, and the preferred route for using local credentials with the Vercel AI SDK is shown in the example above.
+
+You now import and provide an extra `openaiCredentials`, either from `@openai-oauth/local` for local credentials as before or from another credential source.
+
+</details>
 
 ### `@openai-oauth/openai-client`
 
