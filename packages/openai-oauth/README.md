@@ -33,6 +33,8 @@ Common flags:
 | Open browser | `--open` / `--no-open` | `--open` |
 | Login timeout | `--login-timeout-ms` | `300000` |
 
+Login listens on loopback and uses `http://localhost:1455/auth/callback`, the local callback URL accepted by OpenAI OAuth.
+
 Advanced flags also exist for overriding the upstream Codex base URL, OAuth client id, OAuth token URL, and Codex API version.
 
 ## More

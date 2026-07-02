@@ -157,6 +157,8 @@ You can always directly sign in (without starting the server):
 npx openai-oauth login
 ```
 
+Login listens on loopback and uses `http://localhost:1455/auth/callback`, the local callback URL accepted by OpenAI OAuth.
+
 The CLI also supports a few configuration options that generally do not need to be edited.
 
 <details>
