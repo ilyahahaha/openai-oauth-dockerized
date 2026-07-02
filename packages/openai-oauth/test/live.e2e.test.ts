@@ -78,6 +78,18 @@ describe("openai oauth server live e2e", () => {
 				prompt: "Reply with exactly: server-smoke-ok",
 			})
 			expect(smoke.text.trim()).toBe("server-smoke-ok")
+			expect(smoke.finishReason).toBe("stop")
+			expect(smoke.usage.inputTokens).toBeGreaterThan(0)
+			expect(smoke.usage.outputTokens).toBeGreaterThan(0)
+
+			const chatSmoke = await generateText({
+				model: openai.chat(liveModel),
+				prompt: "Reply with exactly: server-chat-ok",
+			})
+			expect(chatSmoke.text.trim()).toBe("server-chat-ok")
+			expect(chatSmoke.finishReason).toBe("stop")
+			expect(chatSmoke.usage.inputTokens).toBeGreaterThan(0)
+			expect(chatSmoke.usage.outputTokens).toBeGreaterThan(0)
 
 			const weather = tool({
 				description: "Get weather",
@@ -87,6 +99,8 @@ describe("openai oauth server live e2e", () => {
 			})
 
 			const streamedToolEvents: string[] = []
+			let streamFinishReason: string | undefined
+			let streamInputTokens: number | undefined
 			const toolStream = streamText({
 				model: openai.chat(liveModel),
 				messages: [
@@ -106,10 +120,17 @@ describe("openai oauth server live e2e", () => {
 				) {
 					streamedToolEvents.push(part.type)
 				}
+
+				if (part.type === "finish") {
+					streamFinishReason = part.finishReason
+					streamInputTokens = part.totalUsage.inputTokens
+				}
 			}
 
 			expect(streamedToolEvents).toContain("tool-input-start")
 			expect(streamedToolEvents).toContain("tool-call")
+			expect(streamFinishReason).toBe("tool-calls")
+			expect(streamInputTokens).toBeGreaterThan(0)
 
 			const agent = new ToolLoopAgent({
 				model: openai.chat(liveModel),

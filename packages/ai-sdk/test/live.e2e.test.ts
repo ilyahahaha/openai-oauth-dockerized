@@ -24,9 +24,14 @@ describe("openai oauth provider live e2e", () => {
 			})
 
 			expect(smoke.text.trim()).toBe("provider-smoke-ok")
+			expect(smoke.finishReason).toBe("stop")
+			expect(smoke.usage.inputTokens).toBeGreaterThan(0)
+			expect(smoke.usage.outputTokens).toBeGreaterThan(0)
 
 			const reasoningEvents: string[] = []
 			let streamedText = ""
+			let streamFinishReason: string | undefined
+			let streamInputTokens: number | undefined
 			const reasoningStream = streamText({
 				model: openai(liveModel),
 				prompt: "Think briefly and reply with exactly: provider-stream-ok",
@@ -46,11 +51,18 @@ describe("openai oauth provider live e2e", () => {
 				if (part.type === "text-delta") {
 					streamedText += part.text
 				}
+
+				if (part.type === "finish") {
+					streamFinishReason = part.finishReason
+					streamInputTokens = part.totalUsage.inputTokens
+				}
 			}
 
 			expect(reasoningEvents).toContain("reasoning-start")
 			expect(reasoningEvents).toContain("reasoning-end")
 			expect(streamedText).toContain("provider-stream-ok")
+			expect(streamFinishReason).toBe("stop")
+			expect(streamInputTokens).toBeGreaterThan(0)
 
 			const weather = tool({
 				description: "Get weather",

@@ -46,6 +46,10 @@ describe("createOpenAIOAuth", () => {
 		})
 
 		expect(result.text).toBe("hello")
+		expect(result.finishReason).toBe("stop")
+		expect(result.usage.inputTokens).toBe(1)
+		expect(result.usage.outputTokens).toBe(1)
+		expect(result.usage.totalTokens).toBe(2)
 		expect(fetch).toHaveBeenCalledTimes(1)
 
 		const [url, init] = fetch.mock.calls[0] ?? []

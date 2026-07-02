@@ -242,6 +242,70 @@ describe("openai oauth server", () => {
 		})
 	})
 
+	test("returns finish reason and usage for chat completions", async () => {
+		const handler = createOpenAIOAuthFetchHandler({
+			auth: {
+				accessToken: "access-token",
+				accountId: "acct-1",
+			},
+			ensureFresh: false,
+			fetch: async () =>
+				new Response(
+					[
+						"event: response.created",
+						'data: {"type":"response.created","response":{"id":"resp_1","model":"gpt-5.4-mini","created_at":1735689600}}',
+						"",
+						"event: response.output_text.delta",
+						'data: {"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"hello"}',
+						"",
+						"event: response.output_text.done",
+						'data: {"type":"response.output_text.done","item_id":"msg_1","output_index":0,"content_index":0,"text":"hello"}',
+						"",
+						"event: response.completed",
+						'data: {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.4-mini","created_at":1735689600,"status":"completed","output":[],"usage":{"input_tokens":3,"input_tokens_details":{"cached_tokens":1},"output_tokens":2,"output_tokens_details":{"reasoning_tokens":0}}}}',
+						"",
+						"",
+					].join("\n"),
+					{
+						headers: { "Content-Type": "text/event-stream" },
+					},
+				),
+		})
+
+		const response = await handler(
+			new Request("http://localhost/v1/chat/completions", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					model: "gpt-5.4-mini",
+					messages: [{ role: "user", content: "say hello" }],
+				}),
+			}),
+		)
+
+		expect(response.status).toBe(200)
+		await expect(response.json()).resolves.toMatchObject({
+			choices: [
+				{
+					finish_reason: "stop",
+				},
+			],
+			usage: {
+				prompt_tokens: 3,
+				completion_tokens: 2,
+				total_tokens: 5,
+				prompt_tokens_details: {
+					cached_tokens: 1,
+				},
+				completion_tokens_details: {
+					reasoning_tokens: 0,
+				},
+			},
+		})
+	})
+
 	test("rejects previous_response_id on the stateless responses endpoint", async () => {
 		const authFilePath = await createAuthFile()
 		const fetch = vi.fn()

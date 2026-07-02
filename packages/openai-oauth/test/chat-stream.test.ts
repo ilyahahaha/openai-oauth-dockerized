@@ -78,6 +78,13 @@ const dummyLogContext = {
 	requestId: "test-req",
 	startedAt: Date.now(),
 }
+const usage = {
+	inputTokens: 10,
+	outputTokens: 20,
+	totalTokens: 30,
+	reasoningTokens: 4,
+	cachedInputTokens: 3,
+}
 
 describe("streamChatCompletions", () => {
 	test("emits tool call arguments from deltas when model streams them", async () => {
@@ -108,7 +115,7 @@ describe("streamChatCompletions", () => {
 				{
 					type: "finish",
 					finishReason: "tool-calls",
-					totalUsage: { promptTokens: 10, completionTokens: 20 },
+					totalUsage: usage,
 				},
 			]),
 		)
@@ -168,6 +175,31 @@ describe("streamChatCompletions", () => {
 			.join("")
 
 		expect(args).toBe('{"file_path":"/etc/hosts"}')
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				choices: [
+					expect.objectContaining({
+						finish_reason: "tool_calls",
+					}),
+				],
+			}),
+		)
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				choices: [],
+				usage: {
+					prompt_tokens: 10,
+					completion_tokens: 20,
+					total_tokens: 30,
+					prompt_tokens_details: {
+						cached_tokens: 3,
+					},
+					completion_tokens_details: {
+						reasoning_tokens: 4,
+					},
+				},
+			}),
+		)
 	})
 
 	test("emits tool call arguments from tool-call event when model skips deltas", async () => {
@@ -189,7 +221,7 @@ describe("streamChatCompletions", () => {
 				{
 					type: "finish",
 					finishReason: "tool-calls",
-					totalUsage: { promptTokens: 10, completionTokens: 20 },
+					totalUsage: usage,
 				},
 			]),
 		)
