@@ -132,6 +132,8 @@ export async function POST(request: Request) {
 }
 ```
 
+The first time you or your users use Sign in with ChatGPT, it will prompt you to install the Sign in with ChatGPT Chrome extension, required for secure authentication.
+
 Works with any web framework and OpenAI-compatible client. [Learn more](#react-component)
 
 # Docs
@@ -443,6 +445,8 @@ The button handles the full browser sign-in flow. After sign-in, it becomes a di
 
 The prebuilt button includes a small "Powered by OpenAI OAuth" link by default to support this project. Pass `hideAttribution` to remove the attribution link.
 
+Hosted web apps need the Sign in with ChatGPT Chrome extension to complete the OAuth handoff securely.
+
 Due to CORS, you will need a server relay to call the actual AI API. One way to do this is to send the browser session to your own app route:
 
 ```ts
@@ -487,16 +491,23 @@ Useful props:
 />
 ```
 
-Additionally, you can create a custom sign in system with the hook.
+Additionally, you can create a custom sign in system with the hook. If you build custom UI, handle `needs-extension` by rendering `SignInWithChatGPTExtensionScreen` or your own equivalent install screen.
 
 ```tsx
-import { useSignInWithChatGPT } from "@openai-oauth/react";
+import {
+	SignInWithChatGPTExtensionScreen,
+	useSignInWithChatGPT,
+} from "@openai-oauth/react";
 
 function CustomLogin() {
 	const login = useSignInWithChatGPT();
 
 	if (login.status === "signed-in") {
 		return <button onClick={() => void login.logout()}>Disconnect</button>;
+	}
+
+	if (login.status === "needs-extension") {
+		return <SignInWithChatGPTExtensionScreen onContinue={login.login} />;
 	}
 
 	return (
@@ -511,6 +522,7 @@ What is intentionally not there yet:
 
 - Only LLMs supported by Codex are available. This lists updates over time and is dependent on your Codex plan.
 - There is no stateful replay support on the CLI `/v1/responses` endpoint. The proxy is stateless and expects callers to send the full conversation history.
+- Hosted browser sign-in currently requires Chrome and the Sign in with ChatGPT extension. Local apps, Electron, and Tauri can use the loopback callback directly.
 
 ## How it Works
 

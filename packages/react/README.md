@@ -26,7 +26,7 @@ export default function Page() {
 
 The prebuilt button includes a small "Powered by OpenAI OAuth" link by default. Pass `hideAttribution` to render only the button with no attribution link or reserved space.
 
-The prebuilt component shows the Chrome extension screen inline when hosted web apps need it. The hook itself only exposes auth state, so custom UI users can render their own screen or reuse `SignInWithChatGPTExtensionScreen`.
+Hosted web apps need the open-source Sign in with ChatGPT Chrome extension to complete the OAuth handoff securely. The prebuilt component detects whether it is installed and shows the install screen inline when needed.
 
 Browser model calls must go through your own app route because ChatGPT does not allow direct browser CORS requests. Send the signed-in session to that route with `openaiAuthHeaders()`:
 
@@ -81,7 +81,7 @@ Useful props:
 />
 ```
 
-For custom UI, use the hook:
+For custom UI, use the hook. If you build custom UI, handle `needs-extension` by rendering `SignInWithChatGPTExtensionScreen` or your own equivalent install screen.
 
 ```tsx
 import {
