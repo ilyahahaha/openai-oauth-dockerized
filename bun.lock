@@ -11,6 +11,10 @@
         "typescript": "5.9.2",
       },
     },
+    "apps/browser-extension": {
+      "name": "@openai-oauth/browser-extension",
+      "version": "2.0.0-beta.1",
+    },
     "apps/demo": {
       "name": "demo",
       "version": "2.0.0",
@@ -304,6 +308,8 @@
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.2.9", "", { "os": "win32", "cpu": "x64" }, "sha512-qr2VL3Ce5QrwgO2yh1ujSBawrimjVKX8FGF/cOynmdYKJY0BdHpGVNIRK1tqONB10Vkm25Ub1BD2bkjWs4+96w=="],
 
     "@openai-oauth/ai-sdk": ["@openai-oauth/ai-sdk@workspace:packages/ai-sdk"],
+
+    "@openai-oauth/browser-extension": ["@openai-oauth/browser-extension@workspace:apps/browser-extension"],
 
     "@openai-oauth/core": ["@openai-oauth/core@workspace:packages/core"],
 

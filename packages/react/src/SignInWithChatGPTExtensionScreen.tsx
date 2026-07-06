@@ -13,7 +13,8 @@ export type SignInWithChatGPTExtensionScreenProps = {
 	pollIntervalMs?: number
 }
 
-const defaultChromeWebStoreUrl = "https://chromewebstore.google.com/"
+const defaultChromeWebStoreUrl =
+	"https://chromewebstore.google.com/detail/sign-in-with-chatgpt/odbgboachaefbbbdiffcefhpkekhfcna"
 const defaultGithubUrl = "https://github.com/evanzhoudev/openai-oauth"
 const defaultLegalUrl = "https://github.com/evanzhoudev/openai-oauth#legal"
 const defaultPollIntervalMs = 500
