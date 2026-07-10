@@ -3,7 +3,6 @@ import {
 	deriveAccountId,
 	exchangeOpenAIOAuthCode,
 	type FetchFunction,
-	type OpenAIOAuthRequest,
 	type OpenAIOAuthRequestOptions,
 	type OpenAIOAuthSession,
 	type OpenAIOAuthTokenResponse,
@@ -62,21 +61,11 @@ export type OpenAIAuthHeadersOptions = BrowserSessionOptions & {
 
 export type OpenAIAuthHeaders = Record<string, string>
 
-export type OpenAIOAuthCallbackMode = "browser-extension" | "current-origin"
-
-export type BrowserExtensionDetectionOptions = {
-	extensionId?: string
-	installedPath?: string
-	timeoutMs?: number
-	fetch?: FetchFunction
-}
-
 export type StartLoginOptions = Omit<
 	OpenAIOAuthRequestOptions,
 	"redirectUri"
 > & {
 	callbackPath?: string
-	callbackMode?: OpenAIOAuthCallbackMode
 	redirectUri?: string
 	returnTo?: string
 	openMode?: "redirect" | "popup"
@@ -125,8 +114,11 @@ const defaultStoreSettings: StoreSettings = {
 const pendingLoginKey = "openai-oauth:pending-login"
 const browserExtensionStatePrefix = "oo2_"
 const browserExtensionRedirectUri = "http://localhost:1455/auth/callback"
-export const openaiOAuthBrowserExtensionId = "odbgboachaefbbbdiffcefhpkekhfcna"
-export const openaiOAuthBrowserExtensionInstalledPath = "src/installed.json"
+const browserExtensionId = "odbgboachaefbbbdiffcefhpkekhfcna"
+const browserExtensionInstalledPath = "src/installed.json"
+const browserExtensionInstallUrl =
+	"https://chromewebstore.google.com/detail/sign-in-with-chatgpt/odbgboachaefbbbdiffcefhpkekhfcna"
+const browserExtensionDetectionTimeoutMs = 750
 const refreshExpiryMarginMs = 5 * 60 * 1000
 const refreshIntervalMs = 55 * 60 * 1000
 
@@ -149,47 +141,24 @@ const assertBrowserWindow = (): Window => {
 	return window
 }
 
-const isValidBrowserExtensionId = (extensionId: string): boolean =>
-	/^[a-p]{32}$/.test(extensionId)
-
-const getBrowserExtensionInstalledUrl = (
-	extensionId: string,
-	installedPath: string,
-): string => {
-	const normalizedPath = installedPath.replace(/^\/+/, "")
-	return new URL(
-		normalizedPath,
-		`chrome-extension://${extensionId}/`,
-	).toString()
-}
-
-export const isBrowserExtensionInstalled = async (
-	options: BrowserExtensionDetectionOptions = {},
-): Promise<boolean> => {
-	const extensionId = options.extensionId ?? openaiOAuthBrowserExtensionId
-	if (!isValidBrowserExtensionId(extensionId)) {
-		return false
-	}
-
-	const fetchImpl = options.fetch ?? globalThis.fetch
+const isBrowserExtensionInstalled = async (): Promise<boolean> => {
+	const fetchImpl = globalThis.fetch
 	if (!fetchImpl) {
 		return false
 	}
 
-	const timeoutMs = options.timeoutMs ?? 750
 	const controller =
 		typeof AbortController === "undefined" ? null : new AbortController()
-	const timeout =
-		timeoutMs > 0 && controller
-			? globalThis.setTimeout(() => controller.abort(), timeoutMs)
-			: null
+	const timeout = controller
+		? globalThis.setTimeout(
+				() => controller.abort(),
+				browserExtensionDetectionTimeoutMs,
+			)
+		: null
 
 	try {
 		const response = await fetchImpl(
-			getBrowserExtensionInstalledUrl(
-				extensionId,
-				options.installedPath ?? openaiOAuthBrowserExtensionInstalledPath,
-			),
+			`chrome-extension://${browserExtensionId}/${browserExtensionInstalledPath}`,
 			{
 				cache: "no-store",
 				signal: controller?.signal,
@@ -659,28 +628,32 @@ const createBrowserExtensionState = (
 
 export const startLogin = async (
 	options: StartLoginOptions = {},
-): Promise<OpenAIOAuthRequest> => {
+): Promise<
+	{ status: "needs-extension"; installUrl: string } | { status: "started" }
+> => {
 	const browserWindow = assertBrowserWindow()
-	const callbackMode = options.callbackMode ?? "browser-extension"
+	const usesBrowserExtension = options.redirectUri === undefined
+	if (usesBrowserExtension && !(await isBrowserExtensionInstalled())) {
+		return {
+			status: "needs-extension",
+			installUrl: browserExtensionInstallUrl,
+		}
+	}
+
 	const returnTo = options.returnTo ?? getCurrentRelativeUrl()
 	const callbackUrl = options.callbackPath
 		? getDefaultRedirectUri(options.callbackPath)
-		: callbackMode === "browser-extension"
+		: usesBrowserExtension
 			? getCurrentUrl()
 			: getDefaultRedirectUri("/auth/callback")
-	const redirectUri =
-		options.redirectUri ??
-		(callbackMode === "browser-extension"
-			? browserExtensionRedirectUri
-			: callbackUrl)
+	const redirectUri = options.redirectUri ?? browserExtensionRedirectUri
 	const request = await createOpenAIOAuthRequest({
 		clientId: options.clientId,
 		issuer: options.issuer,
 		scope: options.scope,
-		state:
-			callbackMode === "browser-extension"
-				? createBrowserExtensionState(callbackUrl, options.state)
-				: options.state,
+		state: usesBrowserExtension
+			? createBrowserExtensionState(callbackUrl, options.state)
+			: options.state,
 		codeVerifier: options.codeVerifier,
 		simplifiedFlow: options.simplifiedFlow,
 		idTokenAddOrganizations: options.idTokenAddOrganizations,
@@ -704,11 +677,11 @@ export const startLogin = async (
 		if (!popup) {
 			throw new Error("The ChatGPT login popup was blocked.")
 		}
-		return request
+		return { status: "started" }
 	}
 
 	browserWindow.location.assign(request.authorizationUrl)
-	return request
+	return { status: "started" }
 }
 
 export const completeLogin = async (

@@ -16,7 +16,6 @@ export type SignInWithChatGPTProps = Omit<
 	"onError"
 > &
 	UseSignInWithChatGPTOptions & {
-		chromeWebStoreUrl?: string
 		loadingLabel?: string
 		redirectingLabel?: string
 		signedInLabel?: string
@@ -91,10 +90,6 @@ const OpenAILogo = () => (
 
 export const SignInWithChatGPT = ({
 	callbackPath,
-	callbackMode,
-	browserExtensionDetectionTimeoutMs,
-	browserExtensionId,
-	chromeWebStoreUrl,
 	clientId,
 	codeVerifier,
 	sessionStore,
@@ -128,9 +123,6 @@ export const SignInWithChatGPT = ({
 	const [isHovered, setIsHovered] = useState(false)
 	const login = useSignInWithChatGPT({
 		callbackPath,
-		callbackMode,
-		browserExtensionDetectionTimeoutMs,
-		browserExtensionId,
 		clientId,
 		codeVerifier,
 		sessionStore,
@@ -179,9 +171,7 @@ export const SignInWithChatGPT = ({
 
 	const extensionScreen = needsExtension ? (
 		<SignInWithChatGPTExtensionScreen
-			browserExtensionDetectionTimeoutMs={browserExtensionDetectionTimeoutMs}
-			browserExtensionId={browserExtensionId}
-			chromeWebStoreUrl={chromeWebStoreUrl}
+			installUrl={login.installUrl}
 			onCancel={login.reset}
 			onContinue={login.login}
 		/>

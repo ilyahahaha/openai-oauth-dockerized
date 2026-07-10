@@ -2,9 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest"
 import {
 	completeLogin,
 	exchangeCode,
-	isBrowserExtensionInstalled,
 	openaiAuthHeaders,
-	openaiOAuthBrowserExtensionId,
 	refreshSession,
 	startLogin,
 } from "../src/index.js"
@@ -33,43 +31,47 @@ const decodeRelayState = (state: string): Record<string, unknown> =>
 	JSON.parse(Buffer.from(state.slice("oo2_".length), "base64url").toString())
 
 describe("@openai-oauth/web", () => {
-	test("detects the browser extension through the installed marker", async () => {
-		const fetchImpl = vi.fn(async () =>
-			Response.json({ installed: true, name: "sign-in-with-chatgpt" }),
-		)
-
-		await expect(
-			isBrowserExtensionInstalled({ fetch: fetchImpl, timeoutMs: 0 }),
-		).resolves.toBe(true)
-
-		expect(fetchImpl).toHaveBeenCalledWith(
-			`chrome-extension://${openaiOAuthBrowserExtensionId}/src/installed.json`,
-			expect.objectContaining({
-				cache: "no-store",
-			}),
-		)
-	})
-
-	test("treats missing or invalid browser extension markers as not installed", async () => {
+	test("startLogin reports when the browser extension is required", async () => {
+		const assign = vi.fn()
+		const setItem = vi.fn()
 		const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
+		vi.stubGlobal("fetch", fetchImpl)
+		vi.stubGlobal("window", {
+			location: {
+				href: "https://app.example.test/",
+				origin: "https://app.example.test",
+				pathname: "/",
+				search: "",
+				hash: "",
+				assign,
+			},
+			sessionStorage: {
+				getItem: vi.fn(() => null),
+				setItem,
+				removeItem: vi.fn(),
+			},
+		} as unknown as Window)
 
-		await expect(
-			isBrowserExtensionInstalled({
-				extensionId: "not-a-chrome-extension-id",
-				fetch: fetchImpl,
-				timeoutMs: 0,
-			}),
-		).resolves.toBe(false)
-		expect(fetchImpl).not.toHaveBeenCalled()
-
-		await expect(
-			isBrowserExtensionInstalled({ fetch: fetchImpl, timeoutMs: 0 }),
-		).resolves.toBe(false)
+		await expect(startLogin()).resolves.toEqual({
+			status: "needs-extension",
+			installUrl:
+				"https://chromewebstore.google.com/detail/sign-in-with-chatgpt/odbgboachaefbbbdiffcefhpkekhfcna",
+		})
+		expect(fetchImpl).toHaveBeenCalledWith(
+			"chrome-extension://odbgboachaefbbbdiffcefhpkekhfcna/src/installed.json",
+			expect.objectContaining({ cache: "no-store" }),
+		)
+		expect(assign).not.toHaveBeenCalled()
+		expect(setItem).not.toHaveBeenCalled()
 	})
 
 	test("startLogin defaults to the browser-extension relay callback", async () => {
 		const assign = vi.fn()
 		const setItem = vi.fn()
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json({ installed: true })),
+		)
 		vi.stubGlobal("window", {
 			location: {
 				href: "https://app.example.test/dashboard?tab=ai#top",
@@ -86,12 +88,15 @@ describe("@openai-oauth/web", () => {
 			},
 		} as unknown as Window)
 
-		const request = await startLogin({ codeVerifier: "verifier-1" })
-		const url = new URL(request.authorizationUrl)
+		await expect(startLogin({ codeVerifier: "verifier-1" })).resolves.toEqual({
+			status: "started",
+		})
+		const authorizationUrl = String(assign.mock.calls[0]?.[0])
+		const url = new URL(authorizationUrl)
 		const state = url.searchParams.get("state")
 		expect(state).toBeTypeOf("string")
 
-		expect(assign).toHaveBeenCalledWith(request.authorizationUrl)
+		expect(assign).toHaveBeenCalledWith(authorizationUrl)
 		expect(url.searchParams.get("redirect_uri")).toBe(
 			"http://localhost:1455/auth/callback",
 		)
@@ -109,38 +114,11 @@ describe("@openai-oauth/web", () => {
 	})
 
 	test("startLogin preserves caller state inside browser-extension relay state", async () => {
-		vi.stubGlobal("window", {
-			location: {
-				href: "https://app.example.test/",
-				origin: "https://app.example.test",
-				pathname: "/",
-				search: "",
-				hash: "",
-				assign: vi.fn(),
-			},
-			sessionStorage: {
-				getItem: vi.fn(() => null),
-				setItem: vi.fn(),
-				removeItem: vi.fn(),
-			},
-		} as unknown as Window)
-
-		const request = await startLogin({
-			codeVerifier: "verifier-1",
-			state: "caller-state",
-		})
-		const url = new URL(request.authorizationUrl)
-		const state = url.searchParams.get("state") ?? ""
-
-		expect(state.startsWith("oo2_")).toBe(true)
-		expect(decodeRelayState(state)).toMatchObject({
-			appState: "caller-state",
-			callbackUrl: "https://app.example.test/",
-		})
-	})
-
-	test("startLogin can still use the current origin callback", async () => {
 		const assign = vi.fn()
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Response.json({ installed: true })),
+		)
 		vi.stubGlobal("window", {
 			location: {
 				href: "https://app.example.test/",
@@ -157,14 +135,54 @@ describe("@openai-oauth/web", () => {
 			},
 		} as unknown as Window)
 
-		const request = await startLogin({
-			callbackMode: "current-origin",
-			codeVerifier: "verifier-1",
-			state: "state-1",
-		})
-		const url = new URL(request.authorizationUrl)
+		await expect(
+			startLogin({
+				codeVerifier: "verifier-1",
+				state: "caller-state",
+			}),
+		).resolves.toEqual({ status: "started" })
+		const url = new URL(String(assign.mock.calls[0]?.[0]))
+		const state = url.searchParams.get("state") ?? ""
 
-		expect(assign).toHaveBeenCalledWith(request.authorizationUrl)
+		expect(state.startsWith("oo2_")).toBe(true)
+		expect(decodeRelayState(state)).toMatchObject({
+			appState: "caller-state",
+			callbackUrl: "https://app.example.test/",
+		})
+	})
+
+	test("startLogin accepts an explicit callback without the extension", async () => {
+		const assign = vi.fn()
+		const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
+		vi.stubGlobal("fetch", fetchImpl)
+		vi.stubGlobal("window", {
+			location: {
+				href: "https://app.example.test/",
+				origin: "https://app.example.test",
+				pathname: "/",
+				search: "",
+				hash: "",
+				assign,
+			},
+			sessionStorage: {
+				getItem: vi.fn(() => null),
+				setItem: vi.fn(),
+				removeItem: vi.fn(),
+			},
+		} as unknown as Window)
+
+		await expect(
+			startLogin({
+				codeVerifier: "verifier-1",
+				redirectUri: "https://app.example.test/auth/callback",
+				state: "state-1",
+			}),
+		).resolves.toEqual({ status: "started" })
+		const authorizationUrl = String(assign.mock.calls[0]?.[0])
+		const url = new URL(authorizationUrl)
+
+		expect(fetchImpl).not.toHaveBeenCalled()
+		expect(assign).toHaveBeenCalledWith(authorizationUrl)
 		expect(url.searchParams.get("redirect_uri")).toBe(
 			"https://app.example.test/auth/callback",
 		)

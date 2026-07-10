@@ -26,7 +26,7 @@ export default function Page() {
 
 The prebuilt button includes a small "Powered by OpenAI OAuth" link by default. Pass `hideAttribution` to render only the button with no attribution link or reserved space.
 
-Hosted web apps need the open-source Sign in with ChatGPT Chrome extension to complete the OAuth handoff securely. The prebuilt component detects whether it is installed and shows the install screen inline when needed.
+Hosted web apps need the open-source [Sign in with ChatGPT Chrome extension](https://chromewebstore.google.com/detail/sign-in-with-chatgpt/odbgboachaefbbbdiffcefhpkekhfcna) to complete the OAuth handoff securely. `SignInWithChatGPT` detects whether it is installed, shows the install screen when needed, and automatically continues once installation is detected. Developers do not need to configure the extension separately.
 
 Browser model calls must go through your own app route because ChatGPT does not allow direct browser CORS requests. Send the signed-in session to that route with `openaiAuthHeaders()`:
 
@@ -81,13 +81,10 @@ Useful props:
 />
 ```
 
-For custom UI, use the hook. If you build custom UI, handle `needs-extension` by rendering `SignInWithChatGPTExtensionScreen` or your own equivalent install screen.
+For custom UI, use the hook. Custom interfaces are responsible for presenting the extension installation link when needed.
 
 ```tsx
-import {
-	SignInWithChatGPTExtensionScreen,
-	useSignInWithChatGPT,
-} from "@openai-oauth/react";
+import { useSignInWithChatGPT } from "@openai-oauth/react";
 
 function CustomLogin() {
 	const login = useSignInWithChatGPT();
@@ -97,7 +94,15 @@ function CustomLogin() {
 	}
 
 	if (login.status === "needs-extension") {
-		return <SignInWithChatGPTExtensionScreen onContinue={login.login} />;
+		return (
+			<div>
+				<a href={login.installUrl} rel="noreferrer" target="_blank">
+					Install Sign in with ChatGPT
+				</a>
+				<button onClick={() => void login.login()}>Try again</button>
+				<button onClick={login.reset}>Cancel</button>
+			</div>
+		);
 	}
 
 	return (
@@ -141,7 +146,6 @@ type SessionStore = {
 Exports:
 
 - `SignInWithChatGPT`
-- `SignInWithChatGPTExtensionScreen`
 - `useSignInWithChatGPT`
 - `openaiAuthHeaders`
 - `getSession`

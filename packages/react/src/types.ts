@@ -30,6 +30,7 @@ export type SignInWithChatGPTState =
 	  }
 	| {
 			status: "needs-extension"
+			installUrl: string
 			session: null
 			error: null
 	  }

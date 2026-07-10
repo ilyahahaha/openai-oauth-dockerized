@@ -1,20 +1,12 @@
-import { isBrowserExtensionInstalled } from "@openai-oauth/web"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 
 export type SignInWithChatGPTExtensionScreenProps = {
-	browserExtensionDetectionTimeoutMs?: number
-	browserExtensionId?: string
-	chromeWebStoreUrl?: string
-	githubUrl?: string
-	legalUrl?: string
+	installUrl: string
 	onCancel?: () => void
 	onContinue: () => void | Promise<void>
-	pollIntervalMs?: number
 }
 
-const defaultChromeWebStoreUrl =
-	"https://chromewebstore.google.com/detail/sign-in-with-chatgpt/odbgboachaefbbbdiffcefhpkekhfcna"
 const defaultGithubUrl = "https://github.com/evanzhoudev/openai-oauth"
 const defaultLegalUrl = "https://github.com/evanzhoudev/openai-oauth#legal"
 const defaultPollIntervalMs = 500
@@ -226,17 +218,11 @@ const getCenteredPopupFeatures = (): string => {
 }
 
 export const SignInWithChatGPTExtensionScreen = ({
-	browserExtensionDetectionTimeoutMs,
-	browserExtensionId,
-	chromeWebStoreUrl = defaultChromeWebStoreUrl,
-	githubUrl = defaultGithubUrl,
-	legalUrl = defaultLegalUrl,
+	installUrl,
 	onCancel,
 	onContinue,
-	pollIntervalMs = defaultPollIntervalMs,
 }: SignInWithChatGPTExtensionScreenProps) => {
 	const [status, setStatus] = useState("")
-	const hasContinuedRef = useRef(false)
 	const hasOpenedInstallWindowRef = useRef(false)
 	const onContinueRef = useRef(onContinue)
 
@@ -244,38 +230,35 @@ export const SignInWithChatGPTExtensionScreen = ({
 
 	useEffect(() => {
 		let active = true
+		let checking = false
 		let timeoutId: number | undefined
 
-		const checkInstalled = async () => {
+		const tryContinue = async () => {
+			if (checking) {
+				return
+			}
 			if (timeoutId !== undefined) {
 				window.clearTimeout(timeoutId)
 				timeoutId = undefined
 			}
-			const installed = await isBrowserExtensionInstalled({
-				extensionId: browserExtensionId,
-				timeoutMs: browserExtensionDetectionTimeoutMs,
-			})
-			if (!active || hasContinuedRef.current) {
+			checking = true
+			await onContinueRef.current()
+			checking = false
+			if (!active) {
 				return
 			}
-			if (installed) {
-				hasContinuedRef.current = true
-				setStatus("Extension installed. Continuing...")
-				void onContinueRef.current()
-				return
-			}
-			timeoutId = window.setTimeout(checkInstalled, pollIntervalMs)
+			timeoutId = window.setTimeout(tryContinue, defaultPollIntervalMs)
 		}
 
 		const checkOnReturn = () => {
 			if (document.visibilityState === "visible") {
-				void checkInstalled()
+				void tryContinue()
 			}
 		}
 
 		window.addEventListener("focus", checkOnReturn)
 		document.addEventListener("visibilitychange", checkOnReturn)
-		void checkInstalled()
+		void tryContinue()
 
 		return () => {
 			active = false
@@ -285,7 +268,7 @@ export const SignInWithChatGPTExtensionScreen = ({
 				window.clearTimeout(timeoutId)
 			}
 		}
-	}, [browserExtensionDetectionTimeoutMs, browserExtensionId, pollIntervalMs])
+	}, [])
 
 	const handlePrimaryClick = () => {
 		if (hasOpenedInstallWindowRef.current) {
@@ -295,14 +278,14 @@ export const SignInWithChatGPTExtensionScreen = ({
 
 		setStatus("Waiting for extension to be installed...")
 		const features = getCenteredPopupFeatures()
-		const opened = window.open(chromeWebStoreUrl, popupName, features)
+		const opened = window.open(installUrl, popupName, features)
 		if (opened) {
 			hasOpenedInstallWindowRef.current = true
 			opened.focus()
 			return
 		}
 
-		const tab = window.open(chromeWebStoreUrl, "_blank")
+		const tab = window.open(installUrl, "_blank")
 		if (tab) {
 			hasOpenedInstallWindowRef.current = true
 			tab.focus()
@@ -356,7 +339,7 @@ export const SignInWithChatGPTExtensionScreen = ({
 						<span>
 							Free and{" "}
 							<a
-								href={githubUrl}
+								href={defaultGithubUrl}
 								rel="noreferrer"
 								style={sourceLinkStyle}
 								target="_blank"
@@ -391,12 +374,17 @@ export const SignInWithChatGPTExtensionScreen = ({
 				</div>
 			</section>
 			<footer style={footerStyle}>
-				<a href={githubUrl} rel="noreferrer" style={linkStyle} target="_blank">
+				<a
+					href={defaultGithubUrl}
+					rel="noreferrer"
+					style={linkStyle}
+					target="_blank"
+				>
 					Learn more about OpenAI OAuth
 				</a>
 				<div style={footerLinksStyle}>
 					<a
-						href={githubUrl}
+						href={defaultGithubUrl}
 						rel="noreferrer"
 						style={linkStyle}
 						target="_blank"
@@ -404,7 +392,12 @@ export const SignInWithChatGPTExtensionScreen = ({
 						GitHub
 					</a>
 					<span aria-hidden="true">⋅</span>
-					<a href={legalUrl} rel="noreferrer" style={linkStyle} target="_blank">
+					<a
+						href={defaultLegalUrl}
+						rel="noreferrer"
+						style={linkStyle}
+						target="_blank"
+					>
 						Legal
 					</a>
 				</div>

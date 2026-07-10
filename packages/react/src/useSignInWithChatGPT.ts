@@ -3,7 +3,6 @@ import {
 	logout as clearLogin,
 	completeLogin,
 	createSessionStore,
-	isBrowserExtensionInstalled,
 	refreshSession,
 	type StartLoginOptions,
 	startLogin,
@@ -20,8 +19,6 @@ export type SignInWithChatGPTOpenMode = "redirect" | "popup"
 
 export type UseSignInWithChatGPTOptions = Omit<StartLoginOptions, "returnTo"> &
 	Pick<CompleteLoginOptions, "fetch" | "now" | "tokenUrl"> & {
-		browserExtensionId?: string
-		browserExtensionDetectionTimeoutMs?: number
 		sessionStore?: SessionStore
 		onStateChange?: (state: SignInWithChatGPTState) => void
 		onSuccess?: (session: OpenAIOAuthSession) => void
@@ -50,11 +47,12 @@ const signedOutState: SignInWithChatGPTState = {
 	error: null,
 }
 
-const needsExtensionState: SignInWithChatGPTState = {
+const needsExtensionState = (installUrl: string): SignInWithChatGPTState => ({
 	status: "needs-extension",
+	installUrl,
 	session: null,
 	error: null,
-}
+})
 
 const isBrowser = (): boolean => typeof window !== "undefined"
 
@@ -89,9 +87,6 @@ export const useSignInWithChatGPT = (
 ): UseSignInWithChatGPTReturn => {
 	const {
 		callbackPath,
-		callbackMode,
-		browserExtensionDetectionTimeoutMs,
-		browserExtensionId,
 		clientId,
 		codeVerifier,
 		sessionStore: providedSessionStore,
@@ -115,7 +110,6 @@ export const useSignInWithChatGPT = (
 	const onStateChangeRef = useLatest(onStateChange)
 	const defaultStore = useMemo(() => createSessionStore(), [])
 	const sessionStore = providedSessionStore ?? defaultStore
-	const extensionPromptAcceptedRef = useRef(false)
 	const [state, setState] = useState<SignInWithChatGPTState>(checkingState)
 
 	const signedInState = useCallback(
@@ -247,31 +241,16 @@ export const useSignInWithChatGPT = (
 		}
 
 		try {
-			setLoginState({
-				status: "starting",
-				session: null,
-				error: null,
-			})
-
-			if (
-				(callbackMode ?? "browser-extension") === "browser-extension" &&
-				!extensionPromptAcceptedRef.current
-			) {
-				const installed = await isBrowserExtensionInstalled({
-					extensionId: browserExtensionId,
-					timeoutMs: browserExtensionDetectionTimeoutMs,
+			if (state.status !== "needs-extension") {
+				setLoginState({
+					status: "starting",
+					session: null,
+					error: null,
 				})
-				if (installed) {
-					extensionPromptAcceptedRef.current = true
-				} else {
-					setLoginState(needsExtensionState)
-					return
-				}
 			}
 
-			await startLogin({
+			const result = await startLogin({
 				callbackPath,
-				callbackMode,
 				clientId,
 				codeVerifier,
 				extraParams,
@@ -283,6 +262,10 @@ export const useSignInWithChatGPT = (
 				simplifiedFlow,
 				state: configuredState,
 			})
+			if (result.status === "needs-extension") {
+				setLoginState(needsExtensionState(result.installUrl))
+				return
+			}
 
 			setLoginState({
 				status: "redirecting",
@@ -300,9 +283,6 @@ export const useSignInWithChatGPT = (
 		}
 	}, [
 		callbackPath,
-		callbackMode,
-		browserExtensionDetectionTimeoutMs,
-		browserExtensionId,
 		clientId,
 		codeVerifier,
 		configuredState,
@@ -315,10 +295,10 @@ export const useSignInWithChatGPT = (
 		scope,
 		setLoginState,
 		simplifiedFlow,
+		state.status,
 	])
 
 	const logout = useCallback(async () => {
-		extensionPromptAcceptedRef.current = false
 		await clearLogin({ sessionStore })
 		setLoginState(signedOutState)
 	}, [sessionStore, setLoginState])
@@ -366,7 +346,6 @@ export const useSignInWithChatGPT = (
 	])
 
 	const reset = useCallback(() => {
-		extensionPromptAcceptedRef.current = false
 		void clearLogin({ sessionStore })
 		setLoginState(signedOutState)
 	}, [sessionStore, setLoginState])
