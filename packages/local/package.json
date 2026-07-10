@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/local",
-	"version": "2.0.0-beta.1",
+	"version": "2.0.0-beta.2",
 	"description": "Local Codex auth-file auth handle for openai-oauth.",
 	"keywords": [
 		"openai",

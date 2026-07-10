@@ -322,11 +322,15 @@ export const useSignInWithChatGPT = (
 					tokenUrl,
 				},
 			)
-			await sessionStore.set(refreshed)
-			const next = signedInState(refreshed)
+			const nextSession =
+				session.isFedRamp && !refreshed.isFedRamp
+					? { ...refreshed, isFedRamp: true }
+					: refreshed
+			await sessionStore.set(nextSession)
+			const next = signedInState(nextSession)
 			setLoginState(next)
-			onSuccessRef.current?.(refreshed)
-			return refreshed
+			onSuccessRef.current?.(nextSession)
+			return nextSession
 		} catch (error) {
 			fail(error)
 			return null

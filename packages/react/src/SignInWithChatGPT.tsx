@@ -97,6 +97,7 @@ export const SignInWithChatGPT = ({
 	fetch,
 	idTokenAddOrganizations,
 	issuer,
+	now,
 	onSuccess,
 	onError,
 	onStateChange,
@@ -105,6 +106,7 @@ export const SignInWithChatGPT = ({
 	scope,
 	simplifiedFlow,
 	state,
+	tokenUrl,
 	loadingLabel = "Connecting...",
 	redirectingLabel = "Signing in...",
 	signedInLabel = "Disconnect ChatGPT",
@@ -130,6 +132,7 @@ export const SignInWithChatGPT = ({
 		fetch,
 		idTokenAddOrganizations,
 		issuer,
+		now,
 		onSuccess,
 		onError,
 		onStateChange,
@@ -138,6 +141,7 @@ export const SignInWithChatGPT = ({
 		scope,
 		simplifiedFlow,
 		state,
+		tokenUrl,
 	})
 	const isBusy = login.status === "starting" || login.status === "redirecting"
 	const isSignedIn = login.status === "signed-in"
