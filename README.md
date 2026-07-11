@@ -160,6 +160,20 @@ npx openai-oauth
 
 This starts an OpenAI-compatible endpoint (by default at `localhost:10531`) that is connected to your ChatGPT account.
 
+Press `d` to keep it running in the background or `q` to quit. You can also start it in the background directly:
+
+```bash
+npx openai-oauth --detach
+npx openai-oauth status
+```
+
+Follow its logs or stop it from any terminal:
+
+```bash
+npx openai-oauth logs --follow
+npx openai-oauth stop
+```
+
 If you are not signed in, it will ask you to sign in locally. Your credentials will be stored in `~/.codex` (the same place `codex` CLI uses).
 
 You can always directly sign in (without starting the server):

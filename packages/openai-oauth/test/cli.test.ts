@@ -7,6 +7,7 @@ import { describe, expect, test, vi } from "vitest"
 import {
 	parseCliArgs,
 	parseConfirmationAnswer,
+	toHelpMessage,
 	toLoginOptions,
 	toMissingAuthFileMessage,
 	toMissingAuthFilePrompt,
@@ -147,6 +148,63 @@ describe("openai oauth cli", () => {
 		})
 		expect(loginOptions).not.toHaveProperty("host")
 		expect(loginOptions).not.toHaveProperty("port")
+	})
+
+	test("parses detached serve flags", () => {
+		expect(parseCliArgs(["--detach"])).toMatchObject({
+			command: "serve",
+			detach: true,
+		})
+		expect(parseCliArgs(["-d"])).toMatchObject({
+			command: "serve",
+			detach: true,
+		})
+	})
+
+	test("parses logs command follow flags", () => {
+		expect(parseCliArgs(["logs"])).toMatchObject({
+			command: "logs",
+			follow: false,
+		})
+		expect(parseCliArgs(["logs", "--follow"])).toMatchObject({
+			command: "logs",
+			follow: true,
+		})
+		expect(parseCliArgs(["logs", "-f"])).toMatchObject({
+			command: "logs",
+			follow: true,
+		})
+	})
+
+	test("parses stop command", () => {
+		expect(parseCliArgs(["stop"])).toMatchObject({
+			command: "stop",
+		})
+	})
+
+	test("parses status command", () => {
+		expect(parseCliArgs(["status"])).toMatchObject({
+			command: "status",
+		})
+	})
+
+	test("parses but does not document the internal detached child flag", () => {
+		expect(parseCliArgs(["--internal-detached-child"])).toMatchObject({
+			command: "serve",
+			internalDetachedChild: true,
+		})
+		expect(toHelpMessage()).not.toContain("internal-detached-child")
+	})
+
+	test("documents background lifecycle commands and flags", () => {
+		const help = toHelpMessage()
+
+		expect(help).toContain("npx openai-oauth@latest --detach [options]")
+		expect(help).toContain("npx openai-oauth@latest status")
+		expect(help).toContain("npx openai-oauth@latest logs [--follow]")
+		expect(help).toContain("npx openai-oauth@latest stop")
+		expect(help).toContain("-d, --detach")
+		expect(help).toContain("-f, --follow")
 	})
 
 	test("does not reuse server host and port for automatic login", () => {
