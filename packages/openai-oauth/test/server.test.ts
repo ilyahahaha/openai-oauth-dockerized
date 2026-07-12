@@ -285,9 +285,22 @@ describe("openai oauth server", () => {
 				accessToken: "access-token",
 				accountId: "acct-1",
 			},
+			codexVersion: "0.144.1",
 			ensureFresh: false,
-			fetch: async () =>
-				new Response(
+			fetch: async (input) => {
+				if (String(input).includes("/backend-api/codex/models?")) {
+					return Response.json({
+						models: [
+							{
+								slug: "gpt-5.4-mini",
+								visibility: "list",
+								use_responses_lite: true,
+							},
+						],
+					})
+				}
+
+				return new Response(
 					[
 						"event: response.created",
 						'data: {"type":"response.created","response":{"id":"resp_1","model":"gpt-5.4-mini","created_at":1735689600}}',
@@ -306,7 +319,8 @@ describe("openai oauth server", () => {
 					{
 						headers: { "Content-Type": "text/event-stream" },
 					},
-				),
+				)
+			},
 		})
 
 		const response = await handler(

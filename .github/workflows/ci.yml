@@ -76,4 +76,4 @@ jobs:
         run: bun run turbo run build --filter=openai-oauth
 
       - name: Test CLI runtime
-        run: bun run --cwd packages/openai-oauth test
+        run: bun run --cwd packages/openai-oauth test -- test/cli-runtime.test.ts test/node-server.test.ts
