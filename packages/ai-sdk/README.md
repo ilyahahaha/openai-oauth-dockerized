@@ -5,7 +5,7 @@
 Connect OpenAI OAuth credentials to the Vercel AI SDK.
 
 ```bash
-npm i @openai-oauth/ai-sdk ai
+npm i @openai-oauth/ai-sdk @openai-oauth/local ai
 ```
 
 Quickstart:
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 }
 ```
 
-Use `@openai-oauth/react` to establish the browser credentials. See the [Sign in with ChatGPT setup](https://github.com/EvanZhouDev/openai-oauth#sign-in-with-chatgpt-setup).
+Use `@openai-oauth/react` to establish the browser credentials. See the [React Component setup](https://github.com/EvanZhouDev/openai-oauth#react-component).
 
 API shape:
 

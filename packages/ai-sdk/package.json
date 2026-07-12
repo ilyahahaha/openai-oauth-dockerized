@@ -11,6 +11,9 @@
 		"vercel-ai-sdk"
 	],
 	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
 	"sideEffects": false,
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -49,8 +52,8 @@
 		"@openai-oauth/local": "workspace:*",
 		"@types/node": "20.17.24",
 		"ai": "6.0.116",
-		"typescript": "latest",
-		"vitest": "latest",
+		"typescript": "5.9.2",
+		"vitest": "4.1.10",
 		"zod": "^3.25.76"
 	},
 	"author": "EvanZhouDev",

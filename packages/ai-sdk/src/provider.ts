@@ -1,7 +1,4 @@
-import {
-	OpenAIImageModel,
-	OpenAIResponsesLanguageModel,
-} from "@ai-sdk/openai/internal"
+import { createOpenAI } from "@ai-sdk/openai"
 import {
 	type ImageModelV3,
 	type LanguageModelV3,
@@ -14,12 +11,13 @@ import {
 	type SharedV3ProviderMetadata,
 	type SharedV3Warning,
 } from "@ai-sdk/provider"
-import { type FetchFunction, withUserAgentSuffix } from "@ai-sdk/provider-utils"
+import { withUserAgentSuffix } from "@ai-sdk/provider-utils"
 import {
 	createOpenAIOAuthTransport,
 	type OpenAIOAuth,
 	type OpenAIOAuthTransport,
 } from "@openai-oauth/core"
+import packageMetadata from "../package.json" with { type: "json" }
 
 export type OpenAIOAuthModelId = string
 export type OpenAIOAuthImageModelId = string
@@ -29,17 +27,6 @@ export type OpenAIOAuthProviderSettings = {
 }
 
 export type OpenAIOAuthProviderInput = OpenAIOAuthTransport | OpenAIOAuth
-
-type OpenAIConfig = {
-	provider: string
-	url: (options: { modelId: string; path: string }) => string
-	headers: () => Record<string, string | undefined>
-	fetch?: FetchFunction
-	generateId?: () => string
-	fileIdPrefixes?: readonly string[]
-}
-
-type GenerateMode = "response" | "stream"
 
 const emptyUsage = (): LanguageModelV3Usage => ({
 	inputTokens: {
@@ -71,26 +58,28 @@ const mergeProviderMetadata = (
 	return merged
 }
 
-class CodexResponsesLanguageModel extends OpenAIResponsesLanguageModel {
-	private readonly generateMode: GenerateMode
+class CodexResponsesLanguageModel implements LanguageModelV3 {
+	readonly specificationVersion = "v3" as const
+	readonly provider: string
+	readonly modelId: string
+	readonly supportedUrls: LanguageModelV3["supportedUrls"]
 
-	constructor(
-		modelId: OpenAIOAuthModelId,
-		config: OpenAIConfig,
-		options: { generateMode?: GenerateMode } = {},
-	) {
-		super(modelId, config)
-		this.generateMode = options.generateMode ?? "stream"
+	constructor(private readonly model: LanguageModelV3) {
+		this.provider = model.provider
+		this.modelId = model.modelId
+		this.supportedUrls = model.supportedUrls
+	}
+
+	doStream(
+		options: Parameters<LanguageModelV3["doStream"]>[0],
+	): ReturnType<LanguageModelV3["doStream"]> {
+		return this.model.doStream(options)
 	}
 
 	async doGenerate(
 		options: Parameters<LanguageModelV3["doGenerate"]>[0],
 	): Promise<Awaited<ReturnType<LanguageModelV3["doGenerate"]>>> {
-		if (this.generateMode === "response") {
-			return super.doGenerate(options)
-		}
-
-		const streamResult = await super.doStream(options)
+		const streamResult = await this.model.doStream(options)
 		const reader = streamResult.stream.getReader()
 
 		const content: Array<LanguageModelV3Content> = []
@@ -315,23 +304,18 @@ export const createOpenAIOAuth = (
 	const providerName = settings.name ?? "openai"
 	const oauthFetch = transport.fetch
 
-	const config: OpenAIConfig = {
-		provider: `${providerName}.responses`,
-		url: ({ path }) => `${baseURL}${path}`,
-		headers: () => withUserAgentSuffix({}, "oai-oauth/0.0.0"),
+	const provider = createOpenAI({
+		apiKey: "openai-oauth",
+		baseURL,
 		fetch: oauthFetch,
-		fileIdPrefixes: ["file-"],
-	}
+		headers: withUserAgentSuffix({}, `openai-oauth/${packageMetadata.version}`),
+		name: providerName,
+	})
 
 	const createModel = (modelId: OpenAIOAuthModelId) =>
-		new CodexResponsesLanguageModel(modelId, config)
+		new CodexResponsesLanguageModel(provider.responses(modelId))
 	const createImageModel = (modelId: OpenAIOAuthImageModelId) =>
-		new OpenAIImageModel(modelId, {
-			provider: `${providerName}.image`,
-			url: ({ path }) => `${baseURL}${path}`,
-			headers: () => withUserAgentSuffix({}, "oai-oauth/0.0.0"),
-			fetch: oauthFetch,
-		})
+		provider.image(modelId)
 
 	const providerFn = (modelId: OpenAIOAuthModelId) => createModel(modelId)
 	const specificationVersion: ProviderV3["specificationVersion"] = "v3"

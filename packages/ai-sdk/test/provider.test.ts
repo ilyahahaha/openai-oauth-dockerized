@@ -55,10 +55,6 @@ describe("createOpenAIOAuth", () => {
 				accessToken: "access-token",
 				accountId: "acct-1",
 			}),
-			refreshSession: async () => ({
-				accessToken: "access-token",
-				accountId: "acct-1",
-			}),
 		})
 
 		const result = await generateText({
@@ -118,10 +114,6 @@ describe("createOpenAIOAuth", () => {
 			kind: "openai-oauth",
 			fetch,
 			getSession: async () => ({
-				accessToken: "access-token",
-				accountId: "acct-1",
-			}),
-			refreshSession: async () => ({
 				accessToken: "access-token",
 				accountId: "acct-1",
 			}),
