@@ -90,7 +90,7 @@ function CustomLogin() {
 	const login = useSignInWithChatGPT();
 
 	if (login.status === "signed-in") {
-		return <button onClick={() => void login.logout()}>Disconnect</button>;
+		return <button onClick={login.logout}>Disconnect</button>;
 	}
 
 	if (login.status === "needs-extension") {
@@ -99,14 +99,14 @@ function CustomLogin() {
 				<a href={login.installUrl} rel="noreferrer" target="_blank">
 					Install Sign in with ChatGPT
 				</a>
-				<button onClick={() => void login.login()}>Try again</button>
+				<button onClick={login.login}>Try again</button>
 				<button onClick={login.reset}>Cancel</button>
 			</div>
 		);
 	}
 
 	return (
-		<button onClick={() => void login.login()}>Sign in with ChatGPT</button>
+		<button onClick={login.login}>Sign in with ChatGPT</button>
 	);
 }
 ```
@@ -119,7 +119,7 @@ type UseSignInWithChatGPTReturn = SignInWithChatGPTState & {
 	login(): Promise<void>;
 	logout(): Promise<void>;
 	refresh(): Promise<OpenAIOAuthSession | null>;
-	reset(): void;
+	reset(): Promise<void>;
 };
 ```
 

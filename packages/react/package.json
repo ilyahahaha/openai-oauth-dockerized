@@ -11,6 +11,9 @@
 		"sign-in"
 	],
 	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
 	"sideEffects": false,
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -32,7 +35,7 @@
 		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
+		"build": "node ../../scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
 		"prepublishOnly": "bun run build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run"
@@ -49,9 +52,12 @@
 	},
 	"devDependencies": {
 		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.2.3",
+		"happy-dom": "20.10.6",
 		"react": "^19.0.0",
-		"typescript": "latest",
-		"vitest": "latest"
+		"react-dom": "^19.2.3",
+		"typescript": "5.9.2",
+		"vitest": "4.1.10"
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",

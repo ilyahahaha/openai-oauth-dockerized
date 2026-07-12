@@ -30,7 +30,7 @@ export type UseSignInWithChatGPTReturn = SignInWithChatGPTState & {
 	login: () => Promise<void>
 	logout: () => Promise<void>
 	refresh: () => Promise<OpenAIOAuthSession | null>
-	reset: () => void
+	reset: () => Promise<void>
 }
 
 const popupMessageType = "openai-oauth:signed-in"
@@ -195,15 +195,23 @@ export const useSignInWithChatGPT = (
 
 		let current = true
 		void (async () => {
+			let completed = false
 			try {
-				const completed = await completeCallback()
-				if (!current || completed) {
-					return
-				}
-				await loadStoredSession()
+				completed = await completeCallback()
 			} catch (error) {
 				if (current) {
 					fail(error, "invalid-callback")
+				}
+				return
+			}
+			if (!current || completed) {
+				return
+			}
+			try {
+				await loadStoredSession()
+			} catch (error) {
+				if (current) {
+					fail(error)
 				}
 			}
 		})()
@@ -349,8 +357,8 @@ export const useSignInWithChatGPT = (
 		tokenUrl,
 	])
 
-	const reset = useCallback(() => {
-		void clearLogin({ sessionStore })
+	const reset = useCallback(async () => {
+		await clearLogin({ sessionStore })
 		setLoginState(signedOutState)
 	}, [sessionStore, setLoginState])
 
