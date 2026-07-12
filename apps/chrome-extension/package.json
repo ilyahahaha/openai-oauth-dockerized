@@ -6,8 +6,7 @@
 	"scripts": {
 		"build": "node scripts/build.mjs",
 		"build:dev": "node scripts/build.mjs --dev",
-		"pack": "bun run build && rm -rf dist-pack && mkdir -p dist-pack && find dist -name .DS_Store -delete && cd dist && zip -r -X ../dist-pack/sign-in-with-chatgpt-0.0.2.zip .",
-		"typecheck": "echo 'No typecheck for chrome-extension'",
-		"test": "echo 'No tests for chrome-extension'"
+		"pack": "bun run build && node scripts/pack.mjs",
+		"test": "bun test"
 	}
 }
