@@ -260,6 +260,17 @@ const requestToPromise = <T>(request: IDBRequest<T>): Promise<T> =>
 			reject(request.error ?? new Error("IndexedDB request failed."))
 	})
 
+const transactionToPromise = (transaction: IDBTransaction): Promise<void> =>
+	new Promise((resolve, reject) => {
+		transaction.oncomplete = () => resolve()
+		transaction.onerror = () =>
+			reject(transaction.error ?? new Error("IndexedDB transaction failed."))
+		transaction.onabort = () =>
+			reject(
+				transaction.error ?? new Error("IndexedDB transaction was aborted."),
+			)
+	})
+
 const openDatabaseRequest = (
 	settings: StoreSettings,
 	version?: number,
@@ -268,7 +279,9 @@ const openDatabaseRequest = (
 
 	const browserWindow = assertBrowserWindow()
 	return new Promise((resolve, reject) => {
+		let settled = false
 		const timeout = browserWindow.setTimeout(() => {
+			settled = true
 			reject(new Error("Timed out opening browser session storage."))
 		}, 2000)
 		const request =
@@ -283,14 +296,23 @@ const openDatabaseRequest = (
 		}
 		request.onsuccess = () => {
 			browserWindow.clearTimeout(timeout)
+			if (settled) {
+				request.result.close()
+				return
+			}
+			settled = true
 			resolve(request.result)
 		}
 		request.onerror = () => {
 			browserWindow.clearTimeout(timeout)
+			if (settled) return
+			settled = true
 			reject(request.error ?? new Error("Could not open IndexedDB."))
 		}
 		request.onblocked = () => {
 			browserWindow.clearTimeout(timeout)
+			if (settled) return
+			settled = true
 			reject(new Error("Browser session storage is blocked."))
 		}
 	})
@@ -321,8 +343,19 @@ const withStore = async <T>(
 	const db = await openDatabase(settings)
 	try {
 		const tx = db.transaction(settings.storeName, mode)
+		const completed = transactionToPromise(tx)
 		const store = tx.objectStore(settings.storeName)
-		return await fn(store)
+		try {
+			const result = await fn(store)
+			await completed
+			return result
+		} catch (error) {
+			try {
+				tx.abort()
+			} catch {}
+			await completed.catch(() => undefined)
+			throw error
+		}
 	} finally {
 		db.close()
 	}
@@ -429,7 +462,18 @@ const decryptSession = async (
 		key,
 		base64ToBytes(encrypted.ciphertext),
 	)
-	return JSON.parse(textDecoder.decode(plaintext)) as OpenAIOAuthSession
+	const session: unknown = JSON.parse(textDecoder.decode(plaintext))
+	if (
+		typeof session !== "object" ||
+		session === null ||
+		!("accessToken" in session) ||
+		typeof session.accessToken !== "string" ||
+		!("accountId" in session) ||
+		typeof session.accountId !== "string"
+	) {
+		throw new Error("The stored OpenAI OAuth session is malformed.")
+	}
+	return session as OpenAIOAuthSession
 }
 
 export const createSessionStore = (
@@ -442,18 +486,20 @@ export const createSessionStore = (
 
 	return {
 		get: async () => {
-			try {
-				const encrypted = await getRecord<EncryptedSession>(
-					settings,
-					settings.sessionKey,
-				)
-				if (!encrypted) {
-					return null
-				}
-				return decryptSession(await getCryptoKey(settings), encrypted)
-			} catch {
+			const encrypted = await getRecord<EncryptedSession>(
+				settings,
+				settings.sessionKey,
+			)
+			if (!encrypted) {
 				return null
 			}
+			if (
+				typeof encrypted.iv !== "string" ||
+				typeof encrypted.ciphertext !== "string"
+			) {
+				throw new Error("The stored OpenAI OAuth session is malformed.")
+			}
+			return decryptSession(await getCryptoKey(settings), encrypted)
 		},
 		set: async (session) => {
 			const key = await getCryptoKey(settings)

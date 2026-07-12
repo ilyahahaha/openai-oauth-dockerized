@@ -53,6 +53,5 @@ export const openaiCredentials = (
 		instructions: options.instructions,
 		openAIBaseURL: options.openAIBaseURL,
 		getSession: async () => session,
-		refreshSession: async () => session,
 	}
 }
