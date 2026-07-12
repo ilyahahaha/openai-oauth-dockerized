@@ -5,7 +5,7 @@
 Use OpenAI OAuth credentials with the OpenAI JavaScript SDK.
 
 ```bash
-npm i @openai-oauth/openai-client openai
+npm i @openai-oauth/openai-client @openai-oauth/local openai
 ```
 
 Quickstart:
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 }
 ```
 
-Use `@openai-oauth/react` to establish the browser credentials. See the [Sign in with ChatGPT setup](https://github.com/EvanZhouDev/openai-oauth#sign-in-with-chatgpt-setup).
+Use `@openai-oauth/react` to establish the browser credentials. See the [Sign in with ChatGPT setup](https://github.com/EvanZhouDev/openai-oauth#react-component).
 
 The default `apiKey` is the placeholder string `openai-oauth`. Authentication is handled by the custom `fetch` implementation.
 

@@ -10,6 +10,9 @@
 		"openai-client"
 	],
 	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
 	"sideEffects": false,
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -26,7 +29,7 @@
 		"LICENSE"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
+		"build": "node ../../scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
 		"prepublishOnly": "bun run build",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
@@ -40,8 +43,8 @@
 	},
 	"devDependencies": {
 		"openai": "6.46.0",
-		"typescript": "latest",
-		"vitest": "latest"
+		"typescript": "5.9.2",
+		"vitest": "4.1.10"
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",

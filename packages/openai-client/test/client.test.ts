@@ -17,6 +17,19 @@ const completedResponseStream = () =>
 	)
 
 describe("createOpenAIOptions", () => {
+	test("does not enable browser use unless explicitly requested", () => {
+		const credentials = {
+			kind: "openai-oauth" as const,
+			getSession: async () => ({ accessToken: "token", accountId: "account" }),
+		}
+		expect(createOpenAIOptions(credentials)).not.toHaveProperty(
+			"dangerouslyAllowBrowser",
+		)
+		expect(
+			createOpenAIOptions(credentials, { dangerouslyAllowBrowser: true }),
+		).toHaveProperty("dangerouslyAllowBrowser", true)
+	})
+
 	test("drives the OpenAI SDK through the in-memory Codex transport", async () => {
 		let responsesRequest:
 			| { headers: Headers; body: Record<string, unknown> }
@@ -58,10 +71,6 @@ describe("createOpenAIOptions", () => {
 				kind: "openai-oauth",
 				fetch,
 				getSession: async () => ({
-					accessToken: "access-token",
-					accountId: "acct-1",
-				}),
-				refreshSession: async () => ({
 					accessToken: "access-token",
 					accountId: "acct-1",
 				}),
@@ -134,10 +143,6 @@ describe("createOpenAIOptions", () => {
 				kind: "openai-oauth",
 				fetch,
 				getSession: async () => ({
-					accessToken: "access-token",
-					accountId: "acct-1",
-				}),
-				refreshSession: async () => ({
 					accessToken: "access-token",
 					accountId: "acct-1",
 				}),

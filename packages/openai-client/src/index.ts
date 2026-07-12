@@ -44,11 +44,14 @@ export const createOpenAIOptions = (
 	options: CreateOpenAIClientOptions = {},
 ): OpenAIClientOptions => {
 	const transport = toTransport(input)
-	return {
+	const clientOptions: OpenAIClientOptions = {
 		apiKey: options.apiKey ?? "openai-oauth",
 		baseURL: options.baseURL ?? transport.baseURL,
 		fetch: transport.fetch,
 		defaultHeaders: options.defaultHeaders,
-		dangerouslyAllowBrowser: options.dangerouslyAllowBrowser ?? true,
 	}
+	if (options.dangerouslyAllowBrowser !== undefined) {
+		clientOptions.dangerouslyAllowBrowser = options.dangerouslyAllowBrowser
+	}
+	return clientOptions
 }
