@@ -7,10 +7,11 @@ import {
 	type SignInWithChatGPTState,
 } from "@openai-oauth/react"
 import Image from "next/image"
-import { type CSSProperties, useState } from "react"
+import { type CSSProperties, useEffect, useRef, useState } from "react"
 
 type DemoMode = "sign-in" | "local-api"
 type RequestCodeTab = "app" | "route"
+type RequestKind = "text" | "image"
 
 const requestModel = "gpt-5.4-mini"
 const maxResponseLines = 10
@@ -60,11 +61,47 @@ export async function POST(request: Request) {
 }`,
 } satisfies Record<RequestCodeTab, string>
 
+const imageCode = {
+	app: `import { openaiAuthHeaders } from "@openai-oauth/react";
+
+const response = await fetch("/api/image", {
+  method: "POST",
+  headers: {
+    ...await openaiAuthHeaders(),
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ prompt: "A tiny house in a forest" }),
+});
+
+const image = await response.blob();`,
+	route: `import { createOpenAIOAuth } from "@openai-oauth/ai-sdk";
+import { openaiCredentials } from "@openai-oauth/react/server";
+import { generateImage } from "ai";
+
+export async function POST(request: Request) {
+  const { prompt } = await request.json();
+  const openai = createOpenAIOAuth(openaiCredentials(request));
+
+  const result = await generateImage({
+    model: openai.image("gpt-image-2"),
+    prompt,
+  });
+
+  return new Response(Uint8Array.from(result.image.uint8Array), {
+    headers: { "Content-Type": result.image.mediaType },
+  });
+}`,
+} satisfies Record<RequestCodeTab, string>
+
 const localApiCommand = `npx openai-oauth`
 
 const requestCodeLineCount = Math.max(
 	...Object.values(requestCode).map((code) => code.split("\n").length),
 )
+const imageCodeLineCount = Math.max(
+	...Object.values(imageCode).map((code) => code.split("\n").length),
+)
+const requestDemoLineCount = Math.max(requestCodeLineCount, imageCodeLineCount)
 
 function truncateResponse(text: string) {
 	const lines = text.split(/\r?\n/)
@@ -269,8 +306,16 @@ export function LoginPanel() {
 	const [authState, setAuthState] =
 		useState<SignInWithChatGPTState>(initialAuthState)
 	const [prompt, setPrompt] = useState("")
+	const [imagePrompt, setImagePrompt] = useState("")
+	const [imageUrl, setImageUrl] = useState<string | null>(null)
+	const [imageError, setImageError] = useState<string | null>(null)
+	const [isGeneratingImage, setIsGeneratingImage] = useState(false)
 	const [activeRequestTab, setActiveRequestTab] =
 		useState<RequestCodeTab>("app")
+	const [activeImageTab, setActiveImageTab] = useState<RequestCodeTab>("app")
+	const [requestKind, setRequestKind] = useState<RequestKind>("text")
+	const [isRequestMenuOpen, setIsRequestMenuOpen] = useState(false)
+	const requestMenuRef = useRef<HTMLDivElement>(null)
 	const [activeMode, setActiveMode] = useState<DemoMode>("sign-in")
 	const [hasCopiedLocalCommand, setHasCopiedLocalCommand] = useState(false)
 	const {
@@ -287,11 +332,82 @@ export function LoginPanel() {
 	const isSignedIn = authState.status === "signed-in"
 	const isRequesting = isLoading
 	const canRequest = isSignedIn && !isRequesting && prompt.trim().length > 0
+	const canGenerateImage =
+		isSignedIn && !isGeneratingImage && imagePrompt.trim().length > 0
+
+	useEffect(() => {
+		return () => {
+			if (imageUrl) {
+				URL.revokeObjectURL(imageUrl)
+			}
+		}
+	}, [imageUrl])
+
+	useEffect(() => {
+		if (!isRequestMenuOpen) {
+			return
+		}
+
+		const closeOnOutsideClick = (event: MouseEvent) => {
+			if (!requestMenuRef.current?.contains(event.target as Node)) {
+				setIsRequestMenuOpen(false)
+			}
+		}
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setIsRequestMenuOpen(false)
+			}
+		}
+
+		document.addEventListener("pointerdown", closeOnOutsideClick)
+		document.addEventListener("keydown", closeOnEscape)
+		return () => {
+			document.removeEventListener("pointerdown", closeOnOutsideClick)
+			document.removeEventListener("keydown", closeOnEscape)
+		}
+	}, [isRequestMenuOpen])
 
 	const handleAuthStateChange = (next: SignInWithChatGPTState) => {
 		setAuthState(next)
 		if (next.status !== "signed-in") {
 			setCompletion("")
+			setImageUrl(null)
+			setImageError(null)
+			setRequestKind("text")
+			setIsRequestMenuOpen(false)
+		}
+	}
+
+	const handleGenerateImage = async () => {
+		const input = imagePrompt.trim()
+		if (!input || isGeneratingImage) {
+			return
+		}
+
+		setIsGeneratingImage(true)
+		setImageError(null)
+
+		try {
+			const response = await fetch("/api/image", {
+				method: "POST",
+				headers: {
+					...(await openaiAuthHeaders()),
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ prompt: input }),
+			})
+
+			if (!response.ok) {
+				throw new Error((await response.text()) || "Image generation failed.")
+			}
+
+			setImageUrl(URL.createObjectURL(await response.blob()))
+		} catch (error) {
+			setImageError(
+				error instanceof Error ? error.message : "Image generation failed.",
+			)
+		} finally {
+			setIsGeneratingImage(false)
 		}
 	}
 
@@ -410,60 +526,178 @@ export function LoginPanel() {
 							<div className="stepHeading">
 								<span className="stepNumber">2</span>
 								<div>
-									<h2>Make a request</h2>
-									<p>Use the AI SDK with the signed-in account.</p>
+									<div className="requestTypeControl" ref={requestMenuRef}>
+										<button
+											aria-expanded={isRequestMenuOpen}
+											aria-haspopup="menu"
+											className="requestTypeButton"
+											onClick={() => setIsRequestMenuOpen((open) => !open)}
+											type="button"
+										>
+											{requestKind === "image"
+												? "Generate an image"
+												: "Make a request"}
+											<span aria-hidden="true" className="chevronDown" />
+										</button>
+										{isRequestMenuOpen ? (
+											<div className="requestTypeMenu" role="menu">
+												<button
+													aria-checked={requestKind === "text"}
+													onClick={() => {
+														setRequestKind("text")
+														setIsRequestMenuOpen(false)
+													}}
+													role="menuitemradio"
+													type="button"
+												>
+													Make a request
+												</button>
+												{isSignedIn ? (
+													<button
+														aria-checked={requestKind === "image"}
+														onClick={() => {
+															setRequestKind("image")
+															setIsRequestMenuOpen(false)
+														}}
+														role="menuitemradio"
+														type="button"
+													>
+														Generate an image
+													</button>
+												) : null}
+											</div>
+										) : null}
+									</div>
+									<p>
+										{requestKind === "image"
+											? "Create images with the signed-in account. Only available on paid accounts."
+											: "Use the AI SDK with the signed-in account."}
+									</p>
 								</div>
 							</div>
-							<CodeBlock
-								activeTab={activeRequestTab}
-								code={requestCode[activeRequestTab]}
-								minLines={requestCodeLineCount}
-								onTabChange={setActiveRequestTab}
-								tabs={[
-									{ id: "app", label: "app.tsx" },
-									{ id: "route", label: "app/api/chat/route.ts" },
-								]}
-							/>
+							{requestKind === "image" ? (
+								<CodeBlock
+									activeTab={activeImageTab}
+									code={imageCode[activeImageTab]}
+									minLines={requestDemoLineCount}
+									onTabChange={setActiveImageTab}
+									tabs={[
+										{ id: "app", label: "app.tsx" },
+										{ id: "route", label: "app/api/image/route.ts" },
+									]}
+								/>
+							) : (
+								<CodeBlock
+									activeTab={activeRequestTab}
+									code={requestCode[activeRequestTab]}
+									minLines={requestDemoLineCount}
+									onTabChange={setActiveRequestTab}
+									tabs={[
+										{ id: "app", label: "app.tsx" },
+										{ id: "route", label: "app/api/chat/route.ts" },
+									]}
+								/>
+							)}
 						</section>
 
-						<section className="stepOutput requestOutput">
-							<form
-								className="askForm"
-								onSubmit={(event) => {
-									event.preventDefault()
-									void handleMakeRequest()
-								}}
-							>
-								<label className="srOnly" htmlFor="prompt">
-									Ask anything
-								</label>
-								<input
-									disabled={!isSignedIn}
-									id="prompt"
-									onChange={(event) => setPrompt(event.target.value)}
-									placeholder="Ask anything"
-									value={prompt}
-								/>
-								<button aria-label="Send" disabled={!canRequest} type="submit">
-									<ArrowUpIcon />
-								</button>
-							</form>
+						<section
+							className={`stepOutput ${requestKind === "image" ? "imageOutput" : "requestOutput"}`}
+						>
+							{requestKind === "image" ? (
+								<>
+									<form
+										className="askForm"
+										onSubmit={(event) => {
+											event.preventDefault()
+											void handleGenerateImage()
+										}}
+									>
+										<label className="srOnly" htmlFor="image-prompt">
+											Describe an image
+										</label>
+										<input
+											disabled={!isSignedIn}
+											id="image-prompt"
+											onChange={(event) => setImagePrompt(event.target.value)}
+											placeholder="Describe an image"
+											value={imagePrompt}
+										/>
+										<button
+											aria-label="Generate image"
+											disabled={!canGenerateImage}
+											type="submit"
+										>
+											<ArrowUpIcon />
+										</button>
+									</form>
 
-							{isRequesting ? (
-								<p className="statusText">Asking {requestModel}...</p>
-							) : null}
+									{isGeneratingImage ? (
+										<p className="statusText">Generating with gpt-image-2...</p>
+									) : null}
 
-							{completion ? (
-								<output className="responseText">
-									{truncateResponse(completion)}
-								</output>
-							) : null}
+									{imageUrl ? (
+										<div className="generatedImage">
+											<Image
+												alt={imagePrompt || "Generated image"}
+												fill
+												sizes="(max-width: 760px) 100vw, 420px"
+												src={imageUrl}
+												unoptimized
+											/>
+										</div>
+									) : null}
 
-							{completionError ? (
-								<p className="errorText" role="alert">
-									{completionError.message}
-								</p>
-							) : null}
+									{imageError ? (
+										<p className="errorText" role="alert">
+											{imageError}
+										</p>
+									) : null}
+								</>
+							) : (
+								<>
+									<form
+										className="askForm"
+										onSubmit={(event) => {
+											event.preventDefault()
+											void handleMakeRequest()
+										}}
+									>
+										<label className="srOnly" htmlFor="prompt">
+											Ask anything
+										</label>
+										<input
+											disabled={!isSignedIn}
+											id="prompt"
+											onChange={(event) => setPrompt(event.target.value)}
+											placeholder="Ask anything"
+											value={prompt}
+										/>
+										<button
+											aria-label="Send"
+											disabled={!canRequest}
+											type="submit"
+										>
+											<ArrowUpIcon />
+										</button>
+									</form>
+
+									{isRequesting ? (
+										<p className="statusText">Asking {requestModel}...</p>
+									) : null}
+
+									{completion ? (
+										<output className="responseText">
+											{truncateResponse(completion)}
+										</output>
+									) : null}
+
+									{completionError ? (
+										<p className="errorText" role="alert">
+											{completionError.message}
+										</p>
+									) : null}
+								</>
+							)}
 						</section>
 					</div>
 				</section>

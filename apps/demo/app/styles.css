@@ -49,7 +49,7 @@ a {
 .demoShell {
 	--content-inset: 34px;
 	--first-step-height: 382px;
-	--second-step-height: 495px;
+	--second-step-height: 570px;
 	--demo-panel-height: calc(
 		var(--first-step-height) +
 		var(--second-step-height)
@@ -318,6 +318,72 @@ h2 {
 	font-size: clamp(25px, 2.35vw, 35px);
 }
 
+.requestTypeControl {
+	justify-self: start;
+	margin-left: -10px;
+	position: relative;
+}
+
+.requestTypeButton {
+	align-items: center;
+	background: #ffffff;
+	border: 0;
+	border-radius: 8px;
+	color: var(--text);
+	cursor: pointer;
+	display: inline-flex;
+	gap: 14px;
+	font-variation-settings: "wght" 520;
+	font-size: clamp(25px, 2.35vw, 35px);
+	font-weight: 520;
+	letter-spacing: 0;
+	line-height: 1.03;
+	padding: 6px 10px;
+}
+
+.requestTypeButton:hover,
+.requestTypeButton[aria-expanded="true"] {
+	background: #f9f9f9;
+}
+
+.chevronDown {
+	border-bottom: 1.5px solid currentColor;
+	border-right: 1.5px solid currentColor;
+	height: 8px;
+	margin: 0 3px 4px 0;
+	transform: rotate(45deg);
+	width: 8px;
+}
+
+.requestTypeMenu {
+	background: #ffffff;
+	border: 1px solid var(--composer-border);
+	border-radius: 8px;
+	display: grid;
+	left: 0;
+	min-width: 230px;
+	overflow: hidden;
+	position: absolute;
+	top: calc(100% + 10px);
+	z-index: 10;
+}
+
+.requestTypeMenu button {
+	background: transparent;
+	border: 0;
+	color: var(--text);
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 450;
+	padding: 12px 14px;
+	text-align: left;
+}
+
+.requestTypeMenu button:hover,
+.requestTypeMenu button[aria-checked="true"] {
+	background: #f9f9f9;
+}
+
 .stepHeading p {
 	color: var(--muted);
 	font-size: 15px;
@@ -457,11 +523,25 @@ code {
 	width: 15px;
 }
 
-.requestOutput {
+.requestOutput,
+.imageOutput {
 	align-items: stretch;
-	gap: 18px;
+	gap: 16px;
 	justify-content: flex-start;
-	padding-top: 84px;
+	padding-top: 52px;
+}
+
+.generatedImage {
+	align-self: center;
+	aspect-ratio: 1;
+	border-radius: 8px;
+	overflow: hidden;
+	position: relative;
+	width: min(290px, 100%);
+}
+
+.generatedImage img {
+	object-fit: cover;
 }
 
 .askForm {
