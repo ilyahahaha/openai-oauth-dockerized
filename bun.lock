@@ -43,7 +43,7 @@
     },
     "packages/ai-sdk": {
       "name": "@openai-oauth/ai-sdk",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@ai-sdk/openai": "3.0.41",
         "@ai-sdk/provider": "3.0.8",
@@ -64,7 +64,7 @@
     },
     "packages/core": {
       "name": "@openai-oauth/core",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@ai-sdk/provider-utils": "4.0.19",
       },
@@ -76,7 +76,7 @@
     },
     "packages/local": {
       "name": "@openai-oauth/local",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@openai-oauth/core": "workspace:*",
       },
@@ -88,7 +88,7 @@
     },
     "packages/openai-client": {
       "name": "@openai-oauth/openai-client",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@openai-oauth/core": "workspace:*",
       },
@@ -100,7 +100,7 @@
     },
     "packages/openai-oauth": {
       "name": "openai-oauth",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "bin": {
         "openai-oauth": "./dist/cli.js",
       },
@@ -122,7 +122,7 @@
     },
     "packages/react": {
       "name": "@openai-oauth/react",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@openai-oauth/core": "workspace:*",
         "@openai-oauth/web": "workspace:*",
@@ -139,7 +139,7 @@
     },
     "packages/web": {
       "name": "@openai-oauth/web",
-      "version": "2.0.0-beta.2",
+      "version": "2.0.0-beta.3",
       "dependencies": {
         "@openai-oauth/core": "workspace:*",
       },
