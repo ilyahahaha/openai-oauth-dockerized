@@ -22,11 +22,10 @@
 > 
 > **And much more:**
 >
-> - [**Credential Sources**](#sdk-overview): Get credentials from user sign-in, locally, or somewhere else
-> - [**Client Adapters**](#client-adapters): Use those credentials with Vercel AI SDK, OpenAI Client, or any OpenAI-compatible client
 > - [**Image Generation**](#image-generation): Generate and edit images with GPT Image 2
-> - [**CLI Login**](#openai-oauth-cli): You can now login via `npx openai-oauth`
-> - [**Cleaner Package Architecture**](#sdk-overview): Separate packages for CLI, credentials, clients, and more
+> - [**GPT-5.6 Support**](#openai-oauth-cli): OpenAI OAuth now automatically gets the newest OpenAI models
+> - [**Improved CLI**](#openai-oauth-cli): Run in the background with Detached Mode and sign in via the CLI
+> - [**Client Adapters**](#client-adapters): Connect through Vercel AI SDK, the OpenAI client, or any OpenAI-compatible client
 
 # Quickstart
 
