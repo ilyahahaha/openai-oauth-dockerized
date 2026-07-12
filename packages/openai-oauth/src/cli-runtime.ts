@@ -377,7 +377,7 @@ export const activateCliRuntime = async (
 
 		if (request.method === "POST" && request.url === "/stop") {
 			response.writeHead(202).end()
-			setImmediate(() => void options.onStop())
+			setImmediate(options.onStop)
 			return
 		}
 

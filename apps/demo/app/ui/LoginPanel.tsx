@@ -293,7 +293,7 @@ function CodeBlock({
 			<button
 				aria-label={hasCopied ? "Code copied" : "Copy code"}
 				className="codeCopyButton"
-				onClick={() => void handleCopy()}
+				onClick={handleCopy}
 				type="button"
 			>
 				{hasCopied ? <CheckIcon /> : <CopyIcon />}
@@ -718,7 +718,7 @@ export function LoginPanel() {
 								aria-label={
 									hasCopiedLocalCommand ? "Command copied" : "Copy command"
 								}
-								onClick={() => void handleCopyLocalCommand()}
+								onClick={handleCopyLocalCommand}
 								type="button"
 							>
 								{hasCopiedLocalCommand ? <CheckIcon /> : <CopyIcon />}

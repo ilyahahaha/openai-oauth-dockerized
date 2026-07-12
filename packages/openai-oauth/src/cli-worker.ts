@@ -31,7 +31,7 @@ const startCliInstance = async (
 	options: OpenAIOAuthServerOptions,
 	mode: CliRuntimeMode,
 	version: string,
-	onRemoteStop: () => void,
+	onRemoteStop: () => void | Promise<void>,
 ): Promise<{
 	server: RunningOpenAIOAuthServer
 	runtime: ActiveCliRuntime
@@ -89,9 +89,9 @@ export const runCliWorker = async (
 		process.exit(0)
 	}
 
-	instance = await startCliInstance(options, initialMode, version, () => {
-		void shutdown("remote")
-	})
+	instance = await startCliInstance(options, initialMode, version, () =>
+		shutdown("remote"),
+	)
 
 	const onMessage = (value: unknown) => {
 		if (!isWorkerCommand(value) || stopping) {
@@ -120,7 +120,7 @@ export const runCliWorker = async (
 			void shutdown("disconnect")
 		}
 	}
-	const onSignal = () => void shutdown("signal")
+	const onSignal = () => shutdown("signal")
 
 	process.on("message", onMessage)
 	process.once("disconnect", onDisconnect)
