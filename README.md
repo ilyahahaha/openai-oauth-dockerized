@@ -26,6 +26,7 @@
 > - [**GPT-5.6 Support**](#openai-oauth-cli): OpenAI OAuth now automatically gets the newest OpenAI models
 > - [**Improved CLI**](#openai-oauth-cli): Run in the background with Detached Mode and sign in via the CLI
 > - [**Client Adapters**](#client-adapters): Connect through Vercel AI SDK, the OpenAI client, or any OpenAI-compatible client
+> - [**Apache-2.0 License**](https://github.com/EvanZhouDev/openai-oauth/issues/18): Use OpenAI OAuth in both open-source and proprietary applications
 
 # Quickstart
 
