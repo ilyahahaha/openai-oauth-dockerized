@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/web",
-	"version": "2.0.0-beta.4",
+	"version": "2.0.0-beta.5",
 	"description": "Browser credential storage and web utilities for openai-oauth.",
 	"keywords": [
 		"openai",
@@ -32,7 +32,8 @@
 	"files": [
 		"dist",
 		"README.md",
-		"LICENSE"
+		"LICENSE",
+		"NOTICE"
 	],
 	"scripts": {
 		"build": "node ../../scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
@@ -52,7 +53,7 @@
 		"vitest": "4.1.10"
 	},
 	"author": "EvanZhouDev",
-	"license": "AGPL-3.0-only",
+	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git",

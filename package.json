@@ -31,7 +31,7 @@
 		"typescript": "5.9.2"
 	},
 	"author": "EvanZhouDev",
-	"license": "AGPL-3.0-only",
+	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git"

@@ -1,6 +1,6 @@
 {
 	"name": "@openai-oauth/ai-sdk",
-	"version": "2.0.0-beta.4",
+	"version": "2.0.0-beta.5",
 	"description": "Vercel AI SDK provider adapter for openai-oauth auth handles.",
 	"keywords": [
 		"openai",
@@ -27,7 +27,8 @@
 	"files": [
 		"dist",
 		"README.md",
-		"LICENSE"
+		"LICENSE",
+		"NOTICE"
 	],
 	"scripts": {
 		"build": "tsup src/index.ts --format esm --dts --outDir dist --clean",
@@ -57,7 +58,7 @@
 		"zod": "^3.25.76"
 	},
 	"author": "EvanZhouDev",
-	"license": "AGPL-3.0-only",
+	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/EvanZhouDev/openai-oauth.git",

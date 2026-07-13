@@ -67,6 +67,8 @@ writeFileSync(
 	join(dist, "manifest.json"),
 	`${JSON.stringify(manifest, null, "\t")}\n`,
 )
+copyFile(join(root, "../../LICENSE"), join(dist, "LICENSE"))
+copyFile(join(root, "../../NOTICE"), join(dist, "NOTICE"))
 copyFile(
 	join(root, "rules/openai-oauth-callback.json"),
 	join(dist, "rules/openai-oauth-callback.json"),

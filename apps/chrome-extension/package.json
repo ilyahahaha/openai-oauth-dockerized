@@ -2,6 +2,7 @@
 	"name": "@openai-oauth/chrome-extension",
 	"version": "2.0.0-beta.1",
 	"private": true,
+	"license": "Apache-2.0",
 	"description": "Browser helper for OpenAI OAuth web sign-in.",
 	"scripts": {
 		"build": "node scripts/build.mjs",

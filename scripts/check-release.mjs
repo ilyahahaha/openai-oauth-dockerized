@@ -35,12 +35,14 @@ for (const { directory, metadata } of packages) {
 	for (const file of [
 		"README.md",
 		"LICENSE",
+		"NOTICE",
 		...exportTargets(metadata.exports),
 	]) {
 		if (
 			!file.startsWith("./dist") &&
 			file !== "README.md" &&
-			file !== "LICENSE"
+			file !== "LICENSE" &&
+			file !== "NOTICE"
 		) {
 			continue
 		}
