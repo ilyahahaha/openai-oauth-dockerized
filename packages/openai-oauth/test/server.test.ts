@@ -280,11 +280,9 @@ describe("openai oauth server", () => {
 	})
 
 	test("returns finish reason and usage for chat completions", async () => {
+		const authFilePath = await createAuthFile()
 		const handler = createOpenAIOAuthFetchHandler({
-			auth: {
-				accessToken: "access-token",
-				accountId: "acct-1",
-			},
+			authFilePath,
 			codexVersion: "0.144.1",
 			ensureFresh: false,
 			fetch: async (input) => {
@@ -358,6 +356,11 @@ describe("openai oauth server", () => {
 					reasoning_tokens: 0,
 				},
 			},
+		})
+
+		await fs.rm(path.dirname(authFilePath), {
+			recursive: true,
+			force: true,
 		})
 	})
 
