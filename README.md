@@ -13,7 +13,7 @@
 > [!NOTE]
 > ### What's new in v2?
 >
-> Add [**Sign in with ChatGPT**](#react-component) to your apps to let users bring their own ChatGPT accounts for AI. Works across free and paid plans.
+> Add [**Sign in with ChatGPT**](#react-component) to your apps to let users bring their own ChatGPT accounts for AI. Works across free and paid plans. [Try it out on Vercel](https://openai-oauth.vercel.app/).
 >
 > <picture>
 >  <source srcset="/assets/sign-in-with-chatgpt-button.webp" type="image/webp">
